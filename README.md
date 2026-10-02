@@ -64,7 +64,7 @@ Software installed by `scripts/00-host-setup.sh`: Docker, QEMU/KVM, containerlab
 ## Quick start
 
 ```bash
-git clone https://gitlab.com/<your-namespace>/clab-multivendor-automation.git
+git clone https://github.com/Thantoeaungait/Automation_across_ios_xe_xr_nx-os.git
 cd clab-multivendor-automation
 
 # 1. Host preparation (once) — then log out and back in
