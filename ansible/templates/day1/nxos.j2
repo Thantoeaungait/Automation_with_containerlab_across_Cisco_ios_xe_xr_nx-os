@@ -1,0 +1,15 @@
+feature ospf
+hostname {{ inventory_hostname }}
+router ospf {{ ospf.process_id }}
+  router-id {{ dev.router_id }}
+{% for lo in dev.loopbacks + extra_loopbacks %}
+interface {{ lo.name }}
+  ip address {{ lo.ipv4 }}
+  ip router ospf {{ ospf.process_id }} area {{ ospf.area_dotted }}
+{% endfor %}
+{% for intf in dev.interfaces %}
+interface {{ intf.name }}
+  ip address {{ intf.ipv4 }}
+  ip ospf network point-to-point
+  ip router ospf {{ ospf.process_id }} area {{ ospf.area_dotted }}
+{% endfor %}

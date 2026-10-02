@@ -1,0 +1,18 @@
+hostname {{ inventory_hostname }}
+!
+router ospf {{ ospf.process_id }}
+ router-id {{ dev.router_id }}
+!
+{% for lo in dev.loopbacks + extra_loopbacks %}
+interface {{ lo.name }}
+ ip address {{ lo.ipv4 | ansible.utils.ipaddr('address') }} {{ lo.ipv4 | ansible.utils.ipaddr('netmask') }}
+ ip ospf {{ ospf.process_id }} area {{ ospf.area }}
+!
+{% endfor %}
+{% for intf in dev.interfaces %}
+interface {{ intf.name }}
+ ip address {{ intf.ipv4 | ansible.utils.ipaddr('address') }} {{ intf.ipv4 | ansible.utils.ipaddr('netmask') }}
+ ip ospf network point-to-point
+ ip ospf {{ ospf.process_id }} area {{ ospf.area }}
+!
+{% endfor %}

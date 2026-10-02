@@ -1,0 +1,4 @@
+---
+ansible_network_os: cisco.iosxr.iosxr
+ansible_user: clab
+ansible_password: clab@123

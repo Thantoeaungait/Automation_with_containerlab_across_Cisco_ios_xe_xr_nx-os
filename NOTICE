@@ -1,0 +1,19 @@
+clab-multivendor-automation
+Copyright (c) 2026 Than Toe Aung
+
+This project contains only automation code, configuration templates and documentation.
+It does NOT contain or distribute any Cisco software images.
+
+Trademarks
+  Cisco, Catalyst, IOS, IOS XE, IOS XR, NX-OS, Nexus, XRd and XRv are trademarks or registered
+  trademarks of Cisco Systems, Inc. and/or its affiliates. This project is not affiliated with,
+  endorsed by, or sponsored by Cisco Systems, Inc. Use of Cisco virtual images is subject to
+  Cisco's own license terms, which you must obtain and accept separately.
+
+Third-party tools used at runtime (installed separately, under their own licenses):
+  containerlab (BSD-3-Clause)          https://containerlab.dev
+  vrnetlab, srl-labs fork (MIT)        https://github.com/srl-labs/vrnetlab
+  gnmic (Apache-2.0)                   https://gnmic.openconfig.net
+  Ansible / ansible-core (GPL-3.0)     https://www.ansible.com
+  Nornir (Apache-2.0), Netmiko (MIT), ncclient (Apache-2.0)
+  pyATS / Genie (Cisco pyATS license)  https://developer.cisco.com/pyats/

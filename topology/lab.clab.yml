@@ -1,0 +1,47 @@
+# Multivendor automation lab: Catalyst 8000v (IOS XE) + XRd (IOS XR) + Nexus 9000v (NX-OS)
+#
+#            xe1 (C8000v)
+#        Gi2 /          \ Gi3
+#   10.0.12.0/30      10.0.13.0/30
+#     Gi0/0/0/0           Eth1/2
+#       xr1 (XRd) ---- nx1 (N9Kv)
+#     Gi0/0/0/1  10.0.23.0/30  Eth1/1
+#
+# Image tags are overridable from the environment, e.g.:
+#   C8KV_IMAGE=vrnetlab/cisco_c8000v:17.16.01a make deploy
+name: mvauto
+
+mgmt:
+  network: mvauto-mgmt
+  ipv4-subnet: 172.30.30.0/24     # deliberately NOT the clab default (172.20.20.0/24)
+
+topology:
+  kinds:
+    cisco_c8000v:
+      image: ${C8KV_IMAGE:=vrnetlab/cisco_c8000v:17.15.01a}
+    cisco_xrd:
+      image: ${XRD_IMAGE:=ios-xr/xrd-control-plane:24.4.1}
+    cisco_n9kv:
+      image: ${N9KV_IMAGE:=vrnetlab/cisco_n9kv:10.4.3.F}
+      env:
+        QEMU_MEMORY: ${N9KV_MEMORY:=10240}   # MB; n9kv-lite works with 6144
+        QEMU_SMP: ${N9KV_SMP:=4}             # n9kv-lite works with 2
+
+  nodes:
+    xe1:
+      kind: cisco_c8000v
+      mgmt-ipv4: 172.30.30.11     # admin / admin
+    xr1:
+      kind: cisco_xrd
+      mgmt-ipv4: 172.30.30.12     # clab / clab@123
+    nx1:
+      kind: cisco_n9kv
+      mgmt-ipv4: 172.30.30.13     # admin / admin
+
+  links:
+    # c8000v: eth1 -> GigabitEthernet2, eth2 -> GigabitEthernet3
+    # xrd:    Gi0-0-0-X -> GigabitEthernet0/0/0/X
+    # n9kv:   eth1 -> Ethernet1/1, eth2 -> Ethernet1/2
+    - endpoints: ["xe1:eth1", "xr1:Gi0-0-0-0"]
+    - endpoints: ["xr1:Gi0-0-0-1", "nx1:eth1"]
+    - endpoints: ["nx1:eth2", "xe1:eth2"]

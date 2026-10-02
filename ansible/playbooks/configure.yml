@@ -1,0 +1,61 @@
+---
+# Day-1/Day-N: render intent from sot/fabric.yml (+ optional change set) and push it.
+#   Dry run:     ansible-playbook ansible/playbooks/configure.yml --check --diff
+#   With change: ansible-playbook ansible/playbooks/configure.yml -e @sot/changes/loopback100.yml
+- name: Configure fabric from source of truth
+  hosts: lab
+  gather_facts: false
+  vars_files:
+    - ../../sot/fabric.yml
+  vars:
+    dev: "{{ devices[inventory_hostname] }}"
+    extra_loopbacks: "{{ ((changes | default({})).get(inventory_hostname, {})).get('loopbacks', []) }}"
+
+  tasks:
+    # Admin state / L3 mode via resource modules = truly idempotent ("no shutdown" never
+    # appears in running-config, so text-diff modules would report 'changed' forever).
+    - name: Build interface admin-state intent
+      ansible.builtin.set_fact:
+        intf_intent: >-
+          {{ intf_intent | default([]) +
+             [ {'name': item.name, 'description': 'to-' ~ item.peer, 'enabled': true}
+               | combine({'mode': 'layer3'} if dev.platform == 'nxos' else {}) ] }}
+      loop: "{{ dev.interfaces }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: IOS XE - interface admin state
+      when: ansible_network_os == 'cisco.ios.ios'
+      cisco.ios.ios_interfaces:
+        config: "{{ intf_intent }}"
+        state: merged
+
+    - name: IOS XR - interface admin state
+      when: ansible_network_os == 'cisco.iosxr.iosxr'
+      cisco.iosxr.iosxr_interfaces:
+        config: "{{ intf_intent }}"
+        state: merged
+
+    - name: NX-OS - interface admin state + routed mode
+      when: ansible_network_os == 'cisco.nxos.nxos'
+      cisco.nxos.nxos_interfaces:
+        config: "{{ intf_intent }}"
+        state: merged
+
+    - name: IOS XE - addressing + OSPF
+      when: ansible_network_os == 'cisco.ios.ios'
+      cisco.ios.ios_config:
+        src: "{{ playbook_dir }}/../templates/day1/iosxe.j2"
+        save_when: modified
+
+    - name: IOS XR - addressing + OSPF (single atomic commit)
+      when: ansible_network_os == 'cisco.iosxr.iosxr'
+      cisco.iosxr.iosxr_config:
+        src: "{{ playbook_dir }}/../templates/day1/iosxr.j2"
+        comment: "day1: fabric from SoT"
+
+    - name: NX-OS - addressing + OSPF
+      when: ansible_network_os == 'cisco.nxos.nxos'
+      cisco.nxos.nxos_config:
+        src: "{{ playbook_dir }}/../templates/day1/nxos.j2"
+        save_when: modified

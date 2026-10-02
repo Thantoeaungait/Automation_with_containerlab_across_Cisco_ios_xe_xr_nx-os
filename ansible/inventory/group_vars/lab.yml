@@ -1,0 +1,8 @@
+---
+ansible_connection: ansible.netcommon.network_cli
+ansible_network_cli_ssh_type: paramiko   # predictable; libssh is faster but pickier about wheels
+ansible_command_timeout: 180
+ansible_connect_timeout: 180
+# Lab-only plaintext credentials. In production: ansible-vault or an external secrets lookup.
+ansible_host_key_checking: false
+ansible_paramiko_host_key_checking: false

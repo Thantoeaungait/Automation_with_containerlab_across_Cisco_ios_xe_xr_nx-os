@@ -1,0 +1,26 @@
+# Python / tooling
+.venv/
+__pycache__/
+*.pyc
+ansible/collections/
+
+# containerlab runtime
+topology/clab-*/
+clab-*/
+
+# generated artifacts
+reports/
+backups/
+
+# local settings
+lab.env
+
+# NEVER commit Cisco images (licensed software)
+*.qcow2
+*.qcow
+*.vmdk
+*.ova
+*.iso
+*.tgz
+*.tar.gz
+images/

@@ -1,0 +1,15 @@
+# Python 3.12 recommended (pyATS wheels lag behind the newest CPython on Ubuntu 26.04)
+ansible-core>=2.17,<2.21
+paramiko>=3.4
+netaddr>=1.3
+jmespath>=1.0
+nornir>=3.4,<4
+nornir-netmiko>=1.0
+nornir-utils>=0.2
+netmiko>=4.4
+pyats[library]>=24.10
+ncclient>=0.6.15
+lxml>=5.0
+requests>=2.32
+PyYAML>=6.0
+yamllint>=1.35

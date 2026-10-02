@@ -1,0 +1,10 @@
+---
+xe1:
+  hostname: 172.30.30.11
+  groups: [iosxe]
+xr1:
+  hostname: 172.30.30.12
+  groups: [iosxr]
+nx1:
+  hostname: 172.30.30.13
+  groups: [nxos]

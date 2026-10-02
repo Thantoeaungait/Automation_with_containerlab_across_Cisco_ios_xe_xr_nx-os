@@ -1,0 +1,14 @@
+---
+# Example change set: add Loopback100 on every node and advertise it into OSPF.
+# Applied with:   make change      (ansible-playbook ... -e @sot/changes/loopback100.yml)
+# Validated with: make validate-change
+changes:
+  xe1:
+    loopbacks:
+      - { name: Loopback100, ipv4: 100.0.0.1/32 }
+  xr1:
+    loopbacks:
+      - { name: Loopback100, ipv4: 100.0.0.2/32 }
+  nx1:
+    loopbacks:
+      - { name: loopback100, ipv4: 100.0.0.3/32 }

@@ -1,0 +1,70 @@
+---
+# Day-0: enable NETCONF / RESTCONF / gNMI over plain SSH CLI.
+# After this, model-driven tools (ncclient, requests, gnmic) can reach every node.
+- name: Bootstrap programmability interfaces
+  hosts: lab
+  gather_facts: false
+
+  tasks:
+    # ---------------- IOS XE ----------------
+    - name: IOS XE - enable NETCONF + RESTCONF
+      when: ansible_network_os == 'cisco.ios.ios'
+      cisco.ios.ios_config:
+        src: "{{ playbook_dir }}/../templates/bootstrap/iosxe.j2"
+        save_when: modified
+
+    # gNMI CLI differs by release / license level:
+    #   17.x  : gnxi / gnxi server / gnxi port N
+    #   16.x  : gnmi-yang / gnmi-yang server / gnmi-yang port N
+    # Try the modern syntax, fall back to the legacy one, and never fail the play:
+    # NETCONF/RESTCONF (above) are what the rest of the pipeline depends on.
+    - name: IOS XE - enable gNMI (best effort)
+      when: ansible_network_os == 'cisco.ios.ios'
+      block:
+        - name: IOS XE - gNMI via 'gnxi' (17.x)
+          cisco.ios.ios_config:
+            lines:
+              - gnxi
+              - gnxi server
+              - "gnxi port {{ gnmi_port | default(57400) }}"
+            save_when: modified
+      rescue:
+        - name: IOS XE - gNMI via legacy 'gnmi-yang'
+          cisco.ios.ios_config:
+            lines:
+              - gnmi-yang
+              - gnmi-yang server
+              - "gnmi-yang port {{ gnmi_port | default(57400) }}"
+            save_when: modified
+          ignore_errors: true
+          register: gnmi_legacy
+
+        - name: IOS XE - report gNMI unavailable
+          when: gnmi_legacy is failed
+          ansible.builtin.debug:
+            msg: >-
+              gNMI CLI not accepted on {{ inventory_hostname }} (neither 'gnxi' nor 'gnmi-yang').
+              Check on the device with 'conf t' then 'gnxi ?'. NETCONF/RESTCONF are still enabled;
+              the gNMI smoke test will report xe1 as failed.
+
+    # ---------------- IOS XR ----------------
+    - name: IOS XR - enable NETCONF (:830) and gRPC/gNMI (no-tls :57400)
+      when: ansible_network_os == 'cisco.iosxr.iosxr'
+      cisco.iosxr.iosxr_config:
+        src: "{{ playbook_dir }}/../templates/bootstrap/iosxr.j2"
+        comment: "bootstrap: programmability"
+
+    # ---------------- NX-OS ----------------
+    - name: NX-OS - enable NX-API, NETCONF, RESTCONF, gRPC (TLS :57400)
+      when: ansible_network_os == 'cisco.nxos.nxos'
+      cisco.nxos.nxos_config:
+        src: "{{ playbook_dir }}/../templates/bootstrap/nxos.j2"
+        save_when: modified
+
+    - name: Give model-driven agents time to start (IOS XE NETCONF takes ~60-90 s)
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 830
+        timeout: 300
+        delay: 10
+      delegate_to: localhost
