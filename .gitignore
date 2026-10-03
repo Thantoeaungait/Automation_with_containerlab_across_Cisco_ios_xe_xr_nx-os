@@ -24,3 +24,4 @@ lab.env
 *.tgz
 *.tar.gz
 images/
+*.log

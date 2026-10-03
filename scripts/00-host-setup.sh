@@ -8,7 +8,7 @@ set -euo pipefail
 echo ">>> Base packages, Docker (Ubuntu archive build), KVM"
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl git make jq unzip iproute2 openssh-client \
-  docker.io qemu-system-x86 qemu-utils cpu-checker
+  docker.io shellcheck qemu-system-x86 qemu-utils cpu-checker
 sudo systemctl enable --now docker
 
 echo ">>> KVM check (vrnetlab VMs need /dev/kvm)"
