@@ -5,6 +5,12 @@ ssh server v2
 ssh server rate-limit 600
 ssh server netconf vrf {{ xr_mgmt_vrf | default('default') }}
 !
+{% if xr_mgmt_vrf | default('default') != 'default' %}
+vrf {{ xr_mgmt_vrf }}
+ address-family ipv4 unicast
+ !
+!
+{% endif %}
 grpc
  port 57400
  no-tls

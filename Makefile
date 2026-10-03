@@ -10,7 +10,7 @@ PLAYBOOK     := $(VENV)/bin/ansible-playbook
 # Image tags / NX-OS sizing come from lab.env (shell exports override it)
 -include lab.env
 TOPO         ?= topology/lab.clab.yml
-LAB_VARS := C8KV_IMAGE N9KV_IMAGE N9KV_MEMORY N9KV_SMP XRD_IMAGE XRV9K_IMAGE GNMI_SKIP
+LAB_VARS := C8KV_IMAGE N9KV_IMAGE N9KV_MEMORY N9KV_SMP XRV9K_IMAGE GNMI_SKIP
 export $(LAB_VARS)
 CLAB_ENV := $(foreach v,$(LAB_VARS),$(if $($(v)),$(v)=$($(v))))
 # clab_admins members run containerlab directly; otherwise pass vars via `sudo env`
@@ -36,7 +36,7 @@ deps: ## Create Python 3.12 venv + install Python deps and Ansible collections
 	$(VENV)/bin/ansible-galaxy collection install -r ansible/requirements.yml -p ansible/collections
 
 lint: ## Static checks (no lab needed)
-	$(VENV)/bin/yamllint -c .yamllint topology sot ansible validation nr .gitlab-ci.yml
+	$(VENV)/bin/yamllint -c .yamllint topology sot ansible validation nr
 	shellcheck -S warning scripts/*.sh api/gnmi_check.sh
 	$(PY) -m py_compile nr/*.py api/*.py validation/*.py
 	$(PY) scripts/render_templates.py >/dev/null && echo "templates render OK"

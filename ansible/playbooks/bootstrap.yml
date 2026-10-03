@@ -57,7 +57,7 @@
       when: ansible_network_os == 'cisco.iosxr.iosxr'
       ansible.builtin.set_fact:
         xr_mgmt_vrf: "{{ (xr_mgmt.stdout[0] | regex_search('vrf (\\S+)', '\\1') or ['default']) | first }}"
-        
+
     # ---------------- IOS XR ----------------
     - name: IOS XR - enable NETCONF (:830) and gRPC/gNMI (no-tls :57400)
       when: ansible_network_os == 'cisco.iosxr.iosxr'

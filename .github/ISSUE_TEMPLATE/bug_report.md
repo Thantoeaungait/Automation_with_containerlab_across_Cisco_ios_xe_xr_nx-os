@@ -1,11 +1,17 @@
+---
+name: Bug report
+about: Something in the lab doesn't work as documented
+labels: bug
+---
+
 ## Summary
 <!-- One sentence: what failed? -->
 
 ## Environment
 - Host OS / kernel: <!-- `lsb_release -d; uname -r` -->
 - containerlab version: <!-- `containerlab version` -->
-- Topology: <!-- lab.clab.yml (XRd) / lab-xrv9k.clab.yml -->
-- Images: <!-- `make env` output -->
+- Images: <!-- `docker images | grep -Ei 'c8000v|n9kv|xrv9k'` -->
+- `make env` output:
 - Host RAM / vCPU: <!-- `free -g; nproc` -->
 
 ## Stage that failed
@@ -13,10 +19,8 @@
 
 ## Output
 ```
-<!-- paste the relevant part; please redact anything sensitive -->
+<!-- paste the relevant part; remove anything sensitive -->
 ```
 
 ## What I already tried
 <!-- see docs/TROUBLESHOOTING.md -->
-
-/label ~bug
