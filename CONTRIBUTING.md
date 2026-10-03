@@ -1,26 +1,28 @@
 # Contributing
 
-Thanks for helping improve this lab! Bug reports, platform fixes, new validation checks and docs are all welcome.
+Thanks for helping improve this lab! It's a learning project, so questions, corrections and
+suggestions from experienced engineers are especially welcome.
 
 ## Ground rules
 
-- **Never commit Cisco images, license files, or real credentials.** Merge requests containing them will be closed and the history rewritten.
-- Keep the source of truth authoritative: new checks should derive their expectations from `sot/`, not hard-code them.
-- One logical change per merge request.
+- **Never commit Cisco images, license files, or real credentials.** Pull requests containing them
+  will be closed and the history cleaned.
+- Keep the source of truth authoritative: new checks should derive expectations from `sot/`, not hard-code them.
+- One logical change per pull request.
 
 ## Development setup
 
 ```bash
 ./scripts/00-host-setup.sh   # once
 make deps
-cp lab.env.example lab.env   # set your image tags
+cp lab.env.example lab.env   # only if your image tags differ
 ```
 
-## Before opening a merge request
+## Before opening a pull request
 
 ```bash
 make lint                    # yamllint, shellcheck, py_compile, template render (no lab needed)
-make render                  # eyeball the generated configs
+make render                  # look at the generated configs
 ```
 
 If you have a lab host, also run the stages your change touches, ideally the full pipeline:
@@ -29,25 +31,28 @@ If you have a lab host, also run the stages your change touches, ideally the ful
 KEEP_LAB=1 ./scripts/ci.sh
 ```
 
-State the topology, image versions (`make env`) and containerlab version in the MR description.
+Mention the image versions (`make env`, `docker images`) and containerlab version in the pull request.
 
 ## Style
 
-- **Python:** 3.12, type hints where useful, `ruff`/`black` defaults, no third-party deps beyond `requirements.txt` without discussion.
-- **Ansible:** fully-qualified collection names (`cisco.ios.ios_config`), `--check --diff` must work, keep templates matching running-config rendering.
-- **Shell:** `set -euo pipefail`, must pass `shellcheck -S warning`.
+- **Python:** 3.12, type hints where useful; no new dependencies without discussion.
+- **Ansible:** fully-qualified module names (`cisco.ios.ios_config`); `--check --diff` must work;
+  templates must match running-config rendering.
+- **Shell:** `set -euo pipefail`; must pass `shellcheck -S warning`.
 - **YAML:** must pass `yamllint -c .yamllint`.
-- **Commits:** imperative mood, e.g. `validation: check BGP sessions from SoT`. Conventional Commit prefixes (`feat:`, `fix:`, `docs:`) are welcome.
+- **Commits:** imperative mood, e.g. `validation: check BGP sessions from SoT`. Prefixes like
+  `feat:`, `fix:`, `docs:` are welcome.
 
-## Adding a platform or node
+## Adding a node or platform
 
-1. Add the node to `topology/*.clab.yml` with a fixed `mgmt-ipv4`.
+1. Add the node to `topology/lab.clab.yml` with a fixed `mgmt-ipv4`.
 2. Add it to `sot/fabric.yml`.
 3. Add inventory entries: `ansible/inventory`, `nr/inventory`, `validation/testbed.yaml`, `api/lab_devices.py`.
 4. Add templates under `ansible/templates/{bootstrap,day1}/` and tasks in the playbooks.
-5. Add ping/OSPF command mappings in `validation/validate.py` and audit rules in `nr/backup_and_audit.py`.
+5. Add OSPF/ping command mappings in `validation/validate.py` and audit rules in `nr/backup_and_audit.py`.
 6. Document image preparation in `docs/IMAGES.md`.
 
 ## Reporting bugs
 
-Use the **Bug** issue template and include the output listed in [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md#collecting-information-for-an-issue).
+Open an issue with the **Bug report** template and include the output listed in
+[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md#collecting-information-for-an-issue).

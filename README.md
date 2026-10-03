@@ -1,115 +1,140 @@
-# clab-multivendor-automation
+# Automation with containerlab across Cisco IOS XE, IOS XR and NX-OS
 
-**Cross-platform network automation lab: Cisco IOS XE, IOS XR and NX-OS on [containerlab](https://containerlab.dev).**
+[![lint](https://github.com/Thantoeaungait/Automation_with_containerlab_across_Cisco_ios_xe_xr_nx-os/actions/workflows/lint.yml/badge.svg)](https://github.com/Thantoeaungait/Automation_with_containerlab_across_Cisco_ios_xe_xr_nx-os/actions/workflows/lint.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-One YAML file runs a Catalyst 8000v, an XRd or XRv9000, and a Nexus 9000v side by side. Every node gets a
-fixed management IP, so Ansible, Nornir, pyATS, NETCONF, RESTCONF and gNMI connect straight from the host.
-The full lifecycle — **deploy → change → validate → destroy** — is one command, locally or in GitLab CI.
+**A learning lab for Cisco network automation.** One containerlab topology runs a Catalyst 8000v,
+an XRv9000 and a Nexus 9000v side by side. Ansible configures them from a single YAML source of
+truth, pyATS validates the result, Nornir audits them, and NETCONF, RESTCONF and gNMI are tested
+from the host. The whole lifecycle — **deploy → configure → validate → change → validate → destroy**
+— runs with one command.
 
 ```
-                 xe1  Catalyst 8000v (IOS XE)    172.30.30.11
+                 xe1  Catalyst 8000v (IOS XE)     172.30.30.11
              Gi2 /                       \ Gi3
         10.0.12.0/30                  10.0.13.0/30
       Gi0/0/0/0 /                           \ Eth1/2
-   xr1  XRd / XRv9k (IOS XR) — 10.0.23.0/30 — nx1  Nexus 9000v (NX-OS)
-   172.30.30.12      Gi0/0/0/1          Eth1/1     172.30.30.13
+   xr1  XRv9000 (IOS XR) —— 10.0.23.0/30 —— nx1  Nexus 9000v-lite (NX-OS)
+   172.30.30.12   Gi0/0/0/1         Eth1/1         172.30.30.13
 
    OSPF area 0 (point-to-point) · Loopback0 1.1.1.1 / 2.2.2.2 / 3.3.3.3
 ```
 
-> **Images are not included.** Cisco virtual images are licensed software. You must obtain them yourself
-> (see [docs/IMAGES.md](docs/IMAGES.md)). This repository never contains or distributes them.
+> **About this project.** I built this lab while learning network automation from scratch. I don't
+> have experience in a real-world network automation job, so treat it as an educational lab, not a
+> production framework. Every problem I hit along the way is documented with its fix in
+> [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md). Feedback from experienced engineers is very welcome.
+
+> **Cisco images are not included.** They are licensed software; you must obtain them yourself.
+> See [docs/IMAGES.md](docs/IMAGES.md).
 
 ---
 
 ## Contents
 
-- [Features](#features)
+- [What you'll practice](#what-youll-practice)
+- [Tested versions](#tested-versions)
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
 - [Pipeline stages](#pipeline-stages)
 - [How each tool connects](#how-each-tool-connects)
 - [Making a change](#making-a-change)
 - [Repository layout](#repository-layout)
-- [CI/CD on GitLab](#cicd-on-gitlab)
 - [Configuration reference](#configuration-reference)
 - [Known limitations](#known-limitations)
+- [Going further: what production would add](#going-further-what-production-would-add)
 - [Documentation](#documentation)
-- [Contributing, security, license](#contributing-security-license)
 
-## Features
+## What you'll practice
 
-- **Three NOSes, one topology** — C8000v + XRd (or XRv9000) + N9Kv / N9Kv-lite, selectable per run.
-- **Single source of truth** — `sot/fabric.yml` drives configuration *and* validation. Expected OSPF
-  adjacencies and reachability are computed from it, never hard-coded.
-- **Changes as data** — a change is a small YAML overlay (`sot/changes/*.yml`), so CI validates exactly what an MR introduces.
-- **Idempotent day-1** — resource modules for interface state, templates that match running-config rendering.
-- **Six automation interfaces** — Ansible, Nornir/Netmiko, pyATS/Genie, NETCONF, RESTCONF, gNMI.
-- **CI-ready** — readiness polling instead of sleeps, JUnit reports, artifacts, automatic teardown.
+- **Lab as code** — the topology is a YAML file in Git; every deploy is identical.
+- **Single source of truth** — `sot/fabric.yml` holds the intent. Ansible renders configuration from it,
+  and pyATS derives the expected state (OSPF neighbors, reachability) from the same file.
+- **Changes as data** — a change is a small YAML overlay in `sot/changes/`, validated before you keep it.
+- **Day-0 vs day-1** — bootstrap enables model-driven interfaces over SSH, then day-1 configures the network.
+- **Idempotent configuration** — resource modules for interface state; templates that match running-config.
+- **Multiple automation interfaces** — Ansible, Nornir/Netmiko, pyATS/Genie, NETCONF, RESTCONF, gNMI.
+- **A real pipeline** — readiness polling, JUnit reports, automatic teardown.
+
+## Tested versions
+
+| Component | Version |
+|---|---|
+| Host OS | Ubuntu 26.04 LTS |
+| containerlab | 0.79.0 |
+| Catalyst 8000v (IOS XE) | 17.13.01a — `vrnetlab/cisco_c8000v:17.13.01a` |
+| XRv9000 (IOS XR) | 24.3.1 — `vrnetlab/cisco_xrv9k:24.3.1` (built with `INSTALL=true`) |
+| Nexus 9000v-lite (NX-OS) | 9500v-lite 10.5.5.M — `vrnetlab/cisco_n9kv:9500-lite-10.5.5.M` |
+| Python (venv) | 3.12 via uv |
+
+Other versions will probably work; if your image tags differ, set them in `lab.env` (see below).
 
 ## Requirements
 
-| | XRd topology (recommended) | XRv9000 topology |
-|---|---|---|
-| Host OS | Ubuntu 26.04 LTS (24.04 also works) | same |
-| vCPU | 8 | 12 |
-| RAM | 24 GB with N9Kv-lite · 32 GB with full N9Kv | 32 GB with N9Kv-lite · 48 GB with full N9Kv |
-| Disk | 60 GB free | 80 GB free |
-| Virtualization | `/dev/kvm` (bare metal or nested virt) | same |
+| | Minimum |
+|---|---|
+| vCPU | 8 (12 recommended) |
+| RAM | 32 GB — XRv9000 ~16 GB · C8000v ~5 GB · N9Kv-lite 6 GB + host |
+| Disk | 80 GB free |
+| Virtualization | `/dev/kvm` (bare metal, or nested virtualization enabled) |
 
-Approximate per-node memory: C8000v ~5 GB · N9Kv 10 GB (lite 6 GB) · XRd ~2 GB · XRv9000 ~16 GB.
-
-Software installed by `scripts/00-host-setup.sh`: Docker, QEMU/KVM, containerlab, gnmic, uv.
+Host software (installed by `scripts/00-host-setup.sh`): Docker, QEMU/KVM, containerlab, gnmic, uv, shellcheck.
 
 ## Quick start
 
 ```bash
 git clone https://github.com/Thantoeaungait/Automation_with_containerlab_across_Cisco_ios_xe_xr_nx-os.git
-cd clab-multivendor-automation
+cd Automation_with_containerlab_across_Cisco_ios_xe_xr_nx-os
 
 # 1. Host preparation (once) — then log out and back in
 ./scripts/00-host-setup.sh
 
-# 2. Images (once) — put Cisco files in ~/cisco-images first, see docs/IMAGES.md
-./scripts/01-build-images.sh                     # or e.g.: N9KV_VARIANT=lite ./scripts/01-build-images.sh n9kv xrd
+# 2. Build the images (once) — put the Cisco files in ~/cisco-images first, see docs/IMAGES.md
+N9KV_VARIANT=lite ./scripts/01-build-images.sh c8000v n9kv xrv9k
+docker images | grep -Ei 'c8000v|n9kv|xrv9k'
 
-# 3. Tell the lab which image tags you have
-cp lab.env.example lab.env && $EDITOR lab.env    # match `docker images`
-make env                                         # verify what containerlab will receive
+# 3. Only if your tags differ from "Tested versions": create lab.env
+cp lab.env.example lab.env && nano lab.env
+make env                       # shows what containerlab will receive
 
-# 4. Python toolchain (Python 3.12 venv via uv + Ansible collections)
+# 4. Python toolchain (Python 3.12 venv + Ansible collections)
 make deps
 
-# 5. Run everything
-make ci                                          # XRd topology
-make ci TOPO=topology/lab-xrv9k.clab.yml         # XRv9000 topology
+# 5. Run the whole pipeline
+make ci
 ```
 
-While iterating, keep the lab up and rerun only the stage you're working on:
+The first run takes a while: XRv9000 needs 10–20 minutes to boot. `make wait` polls until all nodes are ready.
+
+**Run stages yourself** (the lab stays up; nothing is destroyed automatically):
 
 ```bash
-KEEP_LAB=1 ./scripts/ci.sh        # full run, lab survives failures
-make configure validate           # iterate without redeploying
-make destroy                      # when done
+make deploy wait           # start nodes and wait for SSH
+make bootstrap configure   # enable APIs, push the configuration
+make validate              # check OSPF and reachability
+make ssh-xr                # log in to a node (ssh-xe, ssh-nx)
+make destroy               # stop the lab
 ```
+
+To keep the lab when the pipeline fails: `KEEP_LAB=1 ./scripts/ci.sh`.
 
 ## Pipeline stages
 
 | `make` target | Tool | What it does |
 |---|---|---|
 | `deploy` | containerlab | Starts the topology; clears stale SSH host keys for the lab IPs |
-| `wait` | Nornir | Polls until every node returns an SSH banner *and* accepts a login (vrnetlab VMs take 5–20 min) |
-| `bootstrap` | Ansible | Day-0: enables NETCONF, RESTCONF, gNMI/gRPC; raises the IOS XR SSH rate limit |
-| `dry-run` | Ansible | `--check --diff` of day-1 |
+| `wait` | Nornir | Polls until each node returns an SSH banner and accepts a login |
+| `bootstrap` | Ansible | Day-0: enables NETCONF, RESTCONF, gNMI/gRPC (detects the XR management VRF) |
+| `dry-run` | Ansible | Shows what day-1 would change (`--check --diff`) |
 | `configure` | Ansible | Day-1: addressing + OSPF rendered from `sot/fabric.yml` |
-| `validate` | pyATS/Genie | OSPF FULL count per node + full-mesh loopback pings → `reports/validation-baseline.xml` |
-| `change` | Ansible | Applies `$(CHANGE)` (default `sot/changes/loopback100.yml`) |
-| `validate-change` | pyATS/Genie | Re-validates including the change set → `reports/validation-change.xml` |
-| `audit` | Nornir | Running-config backups to `backups/` + regex compliance → `reports/audit.json` |
-| `apis` | ncclient / requests / gnmic | NETCONF, RESTCONF, gNMI smoke tests |
-| `destroy` | containerlab | Tears down and removes the lab directory |
+| `validate` | pyATS/Genie | OSPF FULL neighbors per node + full-mesh loopback pings → `reports/validation-baseline.xml` |
+| `change` | Ansible | Applies a change set (default `sot/changes/loopback100.yml`) |
+| `validate-change` | pyATS/Genie | Re-validates including the change → `reports/validation-change.xml` |
+| `audit` | Nornir | Config backups to `backups/` + compliance rules → `reports/audit.json` |
+| `apis` | ncclient · requests · gnmic | NETCONF, RESTCONF and gNMI smoke tests |
+| `destroy` | containerlab | Tears the lab down |
 
-`make help` lists every target, including `lint`, `render`, `inspect`, `graph`, `ssh-xe`, `ssh-xr`, `ssh-nx`.
+`make help` lists all targets, including `lint`, `render`, `env`, `inspect` and `graph`.
 
 ## How each tool connects
 
@@ -119,13 +144,10 @@ make destroy                      # when done
 | Nornir + Netmiko | SSH :22 | ✔ | ✔ | ✔ |
 | pyATS / Genie | SSH :22 | ✔ | ✔ | ✔ |
 | NETCONF (ncclient) | SSH :830 | ✔ | ✔ | ✔ (native-model fallback) |
-| RESTCONF (requests) | HTTPS :443 | ✔ | ✘ not implemented on IOS XR | ✔ via NX-API |
-| gNMI (gnmic) | gRPC :57400 | depends on image license¹ | plaintext | TLS, self-signed |
+| RESTCONF (requests) | HTTPS :443 | ✔ | — not implemented on IOS XR | ✔ via NX-API |
+| gNMI (gnmic) | gRPC :57400 | — see limitations | — see limitations | ✔ TLS, self-signed |
 
-¹ Unlicensed C8000v images often hide the `gnxi`/`gnmi-yang` CLI. Bootstrap tries both and continues;
-the gNMI test skips xe1 by default (`GNMI_SKIP=` to include it).
-
-Default credentials (containerlab kind defaults): xe1 / nx1 `admin` / `admin`, xr1 `clab` / `clab@123`.
+Default credentials (containerlab defaults): xe1 / nx1 `admin` / `admin`, xr1 `clab` / `clab@123`.
 
 ## Making a change
 
@@ -138,75 +160,73 @@ changes:
 ```
 
 ```bash
-make render CHANGE=sot/changes/my-change.yml           # see the generated config, no lab needed
+make render CHANGE=sot/changes/my-change.yml           # preview the generated config (no lab needed)
 make change CHANGE=sot/changes/my-change.yml
 make validate-change CHANGE=sot/changes/my-change.yml  # now also expects 200.0.0.2 to be reachable
 ```
 
-To change the permanent design (links, addressing, new nodes), edit `sot/fabric.yml`; validation adapts automatically.
+To change the permanent design (links, addressing, nodes), edit `sot/fabric.yml`; validation adapts automatically.
 
 ## Repository layout
 
 ```
 .
-├── topology/            lab.clab.yml (XRd) · lab-xrv9k.clab.yml · configs/ (startup snippets)
+├── topology/            lab.clab.yml · configs/xr1.cfg (startup snippet) · *.annotations.json (diagram layout)
 ├── sot/                 fabric.yml (intent) · changes/*.yml (change sets)
 ├── ansible/             inventory · playbooks (bootstrap, configure) · templates (bootstrap, day1)
 ├── nr/                  Nornir: wait_ready.py · backup_and_audit.py · inventory
-├── validation/          pyATS testbed.yaml · validate.py (intent-derived checks, JUnit)
+├── validation/          pyATS testbed.yaml · validate.py (intent-derived checks, JUnit output)
 ├── api/                 netconf_get.py · restconf_get.py · gnmi_check.sh
 ├── scripts/             00-host-setup.sh · 01-build-images.sh · ci.sh · render_templates.py
 ├── docs/                IMAGES.md · ARCHITECTURE.md · TROUBLESHOOTING.md
-├── lab.env.example      image tags / N9Kv sizing (copy to lab.env)
-├── Makefile             entry point for every stage
-└── .gitlab-ci.yml       lint (shared runners) + lab (self-hosted runner)
+├── .github/             lint workflow · issue and pull request templates
+├── lab.env.example      optional local overrides (copy to lab.env)
+└── Makefile             entry point for every stage
 ```
-
-## CI/CD on GitLab
-
-The pipeline has two jobs:
-
-- **`lint`** runs on GitLab's shared runners for every merge request: yamllint, shellcheck, Python
-  compile, Ansible syntax check, offline template rendering. No images or KVM required.
-- **`lab`** runs the full lab on **your own** runner. It only runs when the project CI/CD variable
-  `LAB_RUNNER_AVAILABLE=true` is set, so forks without a lab host stay green.
-
-Runner requirements for `lab`: Ubuntu host with `/dev/kvm`, shell executor, tags `kvm` and `clab`,
-images pre-built, `lab.env` present in the runner's environment (or variables set in CI/CD settings),
-and the runner user in the `docker`, `kvm` and `clab_admins` groups. Reports are kept as job artifacts
-and JUnit results appear in the merge request.
 
 ## Configuration reference
 
-| Variable | Where | Default | Purpose |
-|---|---|---|---|
-| `TOPO` | make / ci.sh | `topology/lab.clab.yml` | Topology to run |
-| `CHANGE` | make | `sot/changes/loopback100.yml` | Change set for `change` / `validate-change` |
-| `KEEP_LAB` | ci.sh | `0` | `1` keeps the lab after the pipeline |
-| `C8KV_IMAGE`, `N9KV_IMAGE`, `XRD_IMAGE`, `XRV9K_IMAGE` | lab.env / env | see topology files | Local image tags |
-| `N9KV_MEMORY`, `N9KV_SMP` | lab.env / env | `10240`, `4` | N9Kv sizing (lite: `6144`, `2`) |
-| `WAIT_TIMEOUT` | make | `1800` | Seconds `make wait` will poll |
-| `GNMI_SKIP` | env | `xe1` | Nodes excluded from the gNMI test |
-| `N9KV_VARIANT`, `XRV9K_VERSION`, `XRV9K_INSTALL`, `C8KV_CONTROLLER` | build script | — | See `scripts/01-build-images.sh` header |
+All optional. Set them in `lab.env` or on the command line (`make ci GNMI_SKIP=none`).
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `C8KV_IMAGE`, `XRV9K_IMAGE`, `N9KV_IMAGE` | tested versions above | Local image tags |
+| `N9KV_MEMORY`, `N9KV_SMP` | `6144`, `2` | N9Kv sizing (full image: `10240`, `4`) |
+| `GNMI_SKIP` | `xe1 xr1` | Nodes excluded from the gNMI test; `none` tests all |
+| `TOPO` | `topology/lab.clab.yml` | Topology file |
+| `CHANGE` | `sot/changes/loopback100.yml` | Change set for `change` / `validate-change` |
+| `KEEP_LAB` | `0` | `1` keeps the lab after `ci.sh` |
+| `WAIT_TIMEOUT` | `1800` | Seconds `make wait` polls |
 
 ## Known limitations
 
-- IOS XR has no RESTCONF; use NETCONF or gNMI.
-- gNMI on C8000v depends on the image's license level; vrnetlab images boot unlicensed.
-- NX-OS gNMI uses an auto-generated self-signed certificate (short-lived); install your own for long-running labs.
-- Fixed management subnet `172.30.30.0/24` and node names: one lab per host.
-- Host-key checking is disabled for lab IPs because every deploy generates new keys. **Do not reuse these
-  connection settings in production.**
-- Lab credentials are plaintext defaults. Use Ansible Vault / a secrets manager anywhere real.
+- **gNMI on xe1:** this C8000v image (unlicensed) has no `gnxi` / `gnmi-yang` CLI. Bootstrap tries both and continues.
+- **gNMI on xr1:** vrnetlab puts the XRv9000 management interface in VRF `clab-mgmt`; in testing, the
+  gRPC server was not reachable there. NETCONF works (bootstrap enables it in the management VRF).
+  Details and what was tried: [TROUBLESHOOTING](docs/TROUBLESHOOTING.md#xrv9000-gnmi-and-the-management-vrf).
+- **RESTCONF on xr1:** IOS XR does not implement RESTCONF.
+- **One lab per host:** fixed management subnet `172.30.30.0/24` and node names.
+- **Validation timing:** right after configuration, OSPF may still be converging; validation retries, and
+  a rerun of `make validate` normally passes.
+
+## Going further: what production would add
+
+This lab keeps things simple on purpose. A production setup would typically add:
+
+- **Secrets management** — Ansible Vault or a secrets manager instead of plaintext lab credentials.
+- **Verified SSH host keys** and **TLS with real certificates** for NETCONF, RESTCONF and gNMI.
+- **Full desired state** — `state: replaced` / `overridden` so removed intent is also removed from devices.
+- **Drift detection** — a scheduled `make dry-run` that alerts on manual changes.
+- **Change approval** — pull request reviews and a pipeline gate before anything reaches real devices.
 
 ## Documentation
 
 - [docs/IMAGES.md](docs/IMAGES.md) — obtaining and building images, file naming rules
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — design decisions and trade-offs
-- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — every failure we've hit and its fix
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — every failure hit while building this lab, with fixes
+- [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [CHANGELOG.md](CHANGELOG.md)
 
-## Contributing, security, license
+## License
 
-- Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
-- Security issues — see [SECURITY.md](SECURITY.md).
-- Released under the [MIT License](LICENSE). See [NOTICE](NOTICE) for trademark and third-party information.
+[MIT](LICENSE) © 2026 Than Toe Aung. Cisco and related product names are trademarks of Cisco Systems, Inc.;
+this project is not affiliated with Cisco. See [NOTICE](NOTICE).

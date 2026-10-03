@@ -7,7 +7,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/reports"; mkdir -p "$OUT"
 PORT="${GNMI_PORT:-57400}"
-SKIP="${GNMI_SKIP-xe1}"   # targets without gNMI on this image (C8000v w/o license); GNMI_SKIP= to test all
+SKIP="${GNMI_SKIP:-xe1 xr1}"   # no gNMI on xe1 (unlicensed C8000v) or xr1 (XRv9k mgmt VRF); GNMI_SKIP=none tests all
 command -v gnmic >/dev/null || { echo "gnmic not found: bash -c \"\$(curl -sL https://get-gnmic.openconfig.net)\""; exit 1; }
 
 # name|address|user|password|tls-flag|encoding|get-path

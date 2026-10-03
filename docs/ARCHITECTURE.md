@@ -49,9 +49,11 @@ connections from one source) before attempting a login.
 | Vendor-neutral config/state API | NETCONF | Most consistent across XE/XR/NX-OS |
 | Streaming telemetry | gNMI | Industry standard; support varies per image |
 
-**XRd vs XRv9000.** XRd (container, ~2 GB, ~2 min boot) is the CI default. XRv9000 (VM, ~16 GB, slow boot)
-is available when you need features missing from XRd control-plane. Interface names, IPs and credentials
-are identical, so all automation is shared.
+**XRv9000 in the topology.** The lab runs IOS XR as XRv9000 (a full VM via vrnetlab, ~16 GB RAM).
+XRd (a container, ~2 GB) would boot faster and fit smaller hosts, and the build script can still load
+it, but the topology uses XRv9000 because that is what was tested end to end. vrnetlab places the
+XRv9000 management interface in VRF `clab-mgmt`, so the bootstrap detects that VRF and enables NETCONF
+(and the VRF address family) there.
 
 **Python 3.12 via uv.** Ubuntu 26.04 ships a newer CPython than pyATS wheels typically support at
 release; `uv` pins 3.12 without touching the system interpreter.

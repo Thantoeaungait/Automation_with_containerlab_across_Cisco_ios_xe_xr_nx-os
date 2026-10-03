@@ -1,3 +1,7 @@
 extends: relaxed
+ignore: |
+  ansible/collections/
+  .venv/
+  topology/clab-*/
 rules:
   line-length: {max: 140}

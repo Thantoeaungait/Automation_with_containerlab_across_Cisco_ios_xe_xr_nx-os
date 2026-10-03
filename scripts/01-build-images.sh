@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Build containerlab images for the multivendor lab.
-#   vrnetlab: C8000v, N9Kv (full or lite), XRv9k   |   docker load: XRd
+#   vrnetlab: C8000v, N9Kv (full or lite), XRv9k   |   docker load: XRv
 #
 # Usage:
 #   ./scripts/01-build-images.sh                  # build everything found in $IMAGES_DIR
-#   ./scripts/01-build-images.sh n9kv xrd         # build only selected platforms
+#   ./scripts/01-build-images.sh n9kv xrv9k         # build only selected platforms
 #
 # Knobs (env):
 #   IMAGES_DIR      where Cisco files live           (default ~/cisco-images)
@@ -26,7 +26,7 @@ VRNETLAB_DIR="${VRNETLAB_DIR:-$HOME/vrnetlab}"
 N9KV_VARIANT="${N9KV_VARIANT:-any}"
 XRV9K_INSTALL="${XRV9K_INSTALL:-true}"
 C8KV_CONTROLLER="${C8KV_CONTROLLER:-0}"
-PLATFORMS=("${@:-c8000v n9kv xrv9k xrd}")
+PLATFORMS=("${@:-c8000v n9kv xrv9k }")
 read -r -a PLATFORMS <<<"${PLATFORMS[*]}"
 
 log()  { printf '\033[1;36m>>> %s\033[0m\n' "$*"; }
@@ -116,33 +116,13 @@ build_xrv9k() {
   make -C "$dir" IMAGES="$dest" INSTALL="$XRV9K_INSTALL" docker-image
 }
 
-# ---------------------------------------------------------------- XRd
-build_xrd() {
-  local xrd bundle out
-  xrd=$(find "$IMAGES_DIR" -maxdepth 3 -name 'xrd-control-plane-container-x64*.tgz' | sort | head -n1)
-  if [[ -z "$xrd" ]]; then
-    bundle=$(first_match 'xrd-control-plane*.tar.gz' 'xrd-control-plane*.tgz') || true
-    if [[ -n "${bundle:-}" ]]; then
-      log "xrd: extracting $(basename "$bundle")"
-      tar -xzf "$bundle" -C "$IMAGES_DIR"
-      xrd=$(find "$IMAGES_DIR" -maxdepth 3 -name 'xrd-control-plane-container-x64*.tgz' | sort | head -n1)
-    fi
-  fi
-  [[ -z "$xrd" ]] && { warn "skip xrd: no xrd-control-plane image in $IMAGES_DIR"; return; }
-  log "xrd: docker load $(basename "$xrd")"
-  out=$(docker load -i "$xrd")
-  echo "$out"
-  local ref; ref=$(sed -n 's/^Loaded image: //p' <<<"$out" | tail -n1)
-  [[ -n "$ref" ]] && log "xrd: export XRD_IMAGE=$ref"
-}
-
 for p in "${PLATFORMS[@]}"; do
   case "$p" in
-    c8000v|n9kv|xrv9k|xrd) want "$p" && "build_$p" ;;
-    *) die "unknown platform '$p' (valid: c8000v n9kv xrv9k xrd)" ;;
+    c8000v|n9kv|xrv9k|xrv) want "$p" && "build_$p" ;;
+    *) die "unknown platform '$p' (valid: c8000v n9kv xrv9k xrv)" ;;
   esac
 done
 
 echo
-log "Available images (export C8KV_IMAGE / N9KV_IMAGE / XRD_IMAGE / XRV9K_IMAGE to match):"
-docker images --format '{{.Repository}}:{{.Tag}}  {{.Size}}' | grep -Ei 'c8000v|n9kv|xrv9k|xrd' || true
+log "Available images (export C8KV_IMAGE / N9KV_IMAGE / XRV9K_IMAGE / XRV9K_IMAGE to match):"
+docker images --format '{{.Repository}}:{{.Tag}}  {{.Size}}' | grep -Ei 'c8000v|n9kv|xrv9k|xrv' || true

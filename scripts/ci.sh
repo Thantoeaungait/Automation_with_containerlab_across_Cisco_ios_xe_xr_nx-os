@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Full pipeline: deploy -> wait -> bootstrap -> configure -> validate -> change -> validate -> audit -> APIs -> destroy
-#   TOPO=topology/lab-xrv9k.clab.yml ./scripts/ci.sh     # XRv9k variant
+#   TOPO=topology/<other>.clab.yml ./scripts/ci.sh       # another topology
 #   KEEP_LAB=1 ./scripts/ci.sh                           # leave lab running for debugging
 set -euo pipefail
 cd "$(dirname "$0")/.."
