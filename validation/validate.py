@@ -182,7 +182,7 @@ def main() -> int:
                     pct = ping_success_pct(out)
                     if pct >= args.min_success:
                         break
-                    time.sleep(10)
+                    time.sleep(20)
                 cases.append(Case("reachability", f"{src}->{dst_dev}:{dst}", pct >= args.min_success,
                                   f"{pct}% success from {src_ip[src]}", time.monotonic() - t1))
 

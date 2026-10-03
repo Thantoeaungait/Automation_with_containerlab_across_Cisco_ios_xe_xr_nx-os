@@ -28,7 +28,7 @@ def connect(d: dict, retries: int = 10, delay: int = 15):
     for attempt in range(1, retries + 1):
         try:
             return manager.connect(
-                host=d["host"], port=830, username=d["username"], password=d["password"],
+                host=d["host"], port=d.get("netconf_port", 830), username=d["username"], password=d["password"],
                 hostkey_verify=False, look_for_keys=False, allow_agent=False,
                 device_params={"name": DEVICE_PARAMS[d["os"]]}, timeout=60,
             )
@@ -42,7 +42,7 @@ def connect(d: dict, retries: int = 10, delay: int = 15):
 def main() -> int:
     failed = False
     for name, d in DEVICES.items():
-        print(f"=== {name} ({d['host']}:830, {d['os']}) ===")
+        print(f"=== {name} ({d['host']}:{d.get('netconf_port', 830)}, {d['os']}) ===")
         try:
             with connect(d) as m:
                 caps = list(m.server_capabilities)

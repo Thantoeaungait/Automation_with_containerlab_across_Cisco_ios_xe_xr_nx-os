@@ -3,10 +3,13 @@ netconf-yang agent
 !
 ssh server v2
 ssh server rate-limit 600
-ssh server netconf vrf default
+ssh server netconf vrf {{ xr_mgmt_vrf | default('default') }}
 !
 grpc
  port 57400
  no-tls
  address-family ipv4
+{% if xr_mgmt_vrf | default('default') != 'default' %}
+ vrf {{ xr_mgmt_vrf }}
+{% endif %}
 !

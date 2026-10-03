@@ -10,7 +10,7 @@ PLAYBOOK     := $(VENV)/bin/ansible-playbook
 # Image tags / NX-OS sizing come from lab.env (shell exports override it)
 -include lab.env
 TOPO         ?= topology/lab.clab.yml
-LAB_VARS := C8KV_IMAGE N9KV_IMAGE N9KV_MEMORY N9KV_SMP XRD_IMAGE XRV9K_IMAGE
+LAB_VARS := C8KV_IMAGE N9KV_IMAGE N9KV_MEMORY N9KV_SMP XRD_IMAGE XRV9K_IMAGE GNMI_SKIP
 export $(LAB_VARS)
 CLAB_ENV := $(foreach v,$(LAB_VARS),$(if $($(v)),$(v)=$($(v))))
 # clab_admins members run containerlab directly; otherwise pass vars via `sudo env`
