@@ -1,0 +1,100 @@
+Abort Power On Auto Provisioning [yes - continue with normal setup, no - continue with Power On Auto Provisioning] (yes/no)[no]: no
+
+2026 Oct  2 11:14:07 switch %$ VDC-1 %$ %COPP-2-COPP_POLICY: Control-Plane is protected with policy copp-system-p-policy-strict.
+
+
+
+2026-10-02 11:14:12,175: launch     [1;94m	DEBUG[0m matched login prompt
+2026-10-02 11:14:12,175: launch     [1;94m	DEBUG[0m trying to log in with "admin" / admin
+2026-10-02 11:14:12,175: vrnetlab   [1;94m	DEBUG[0m writing to serial console: 'admin'
+2026-10-02 11:14:12,175: vrnetlab   [1;32m	INFO[0m waiting for 'Password:' on serial console
+admin
+Password:2026-10-02 11:14:12,195: vrnetlab   [1;32m	INFO[0m read from serial console: 'admin
+Password:'
+2026-10-02 11:14:12,195: vrnetlab   [1;94m	DEBUG[0m writing to serial console: 'admin'
+2026-10-02 11:14:12,195: launch     [1;32m	INFO[0m Scrapli timeout is 900s (default 900s)
+2026-10-02 11:14:12,349: base_driver [1;32m	INFO[0m attempting to acquire 'privilege_exec' privilege level
+2026-10-02 11:14:12,350: sync_channel [1;32m	INFO[0m sending channel input: terminal length 0; strip_prompt: True; eager: False
+2026-10-02 11:14:12,436: sync_channel [1;32m	INFO[0m sending channel input: terminal width 511; strip_prompt: True; eager: False
+2026-10-02 11:14:12,524: launch     [1;38;5;220m	WARNING[0m User provided startup configuration is not found.
+2026-10-02 11:14:12,571: base_driver [1;32m	INFO[0m attempting to acquire 'configuration' privilege level
+2026-10-02 11:14:12,571: sync_channel [1;32m	INFO[0m sending channel input: configure terminal; strip_prompt: True; eager: False
+2026-10-02 11:14:12,705: base_driver [1;32m	INFO[0m attempting to acquire 'configuration' privilege level
+2026-10-02 11:14:12,705: sync_channel [1;32m	INFO[0m sending channel input: terminal dont-ask; strip_prompt: True; eager: False
+2026-10-02 11:14:12,794: sync_channel [1;32m	INFO[0m sending channel input: hostname nx1; strip_prompt: True; eager: False
+2026-10-02 11:14:12,895: sync_channel [1;32m	INFO[0m sending channel input: username admin password 0 admin role network-admin; strip_prompt: True; eager: False
+2026-10-02 11:14:13,000: sync_channel [1;32m	INFO[0m sending channel input: !; strip_prompt: True; eager: False
+2026-10-02 11:14:13,051: sync_channel [1;32m	INFO[0m sending channel input: vrf context management; strip_prompt: True; eager: False
+2026-10-02 11:14:13,141: sync_channel [1;32m	INFO[0m sending channel input: ip route 0.0.0.0/0 10.0.0.2; strip_prompt: True; eager: False
+2026-10-02 11:14:13,228: sync_channel [1;32m	INFO[0m sending channel input: ipv6 route ::/0 2001:db8::1; strip_prompt: True; eager: False
+2026-10-02 11:14:13,316: sync_channel [1;32m	INFO[0m sending channel input: exit; strip_prompt: True; eager: False
+2026-10-02 11:14:13,408: sync_channel [1;32m	INFO[0m sending channel input: !; strip_prompt: True; eager: False
+2026-10-02 11:14:13,458: sync_channel [1;32m	INFO[0m sending channel input: interface mgmt0; strip_prompt: True; eager: False
+2026-10-02 11:14:13,549: sync_channel [1;32m	INFO[0m sending channel input: ip address 10.0.0.15/24; strip_prompt: True; eager: False
+2026-10-02 11:14:13,640: sync_channel [1;32m	INFO[0m sending channel input: ipv6 address 2001:db8::2/64; strip_prompt: True; eager: False
+2026-10-02 11:14:13,732: sync_channel [1;32m	INFO[0m sending channel input: exit; strip_prompt: True; eager: False
+2026-10-02 11:14:13,823: sync_channel [1;32m	INFO[0m sending channel input: !; strip_prompt: True; eager: False
+2026-10-02 11:14:13,873: sync_channel [1;32m	INFO[0m sending channel input: ssh key rsa 2048 force; strip_prompt: True; eager: False
+2026-10-02 11:14:14,962: sync_channel [1;32m	INFO[0m sending channel input: feature ssh; strip_prompt: True; eager: False
+2026-10-02 11:14:15,050: sync_channel [1;32m	INFO[0m sending channel input: !; strip_prompt: True; eager: False
+2026-10-02 11:14:15,101: sync_channel [1;32m	INFO[0m sending channel input: feature scp-server; strip_prompt: True; eager: False
+2026-10-02 11:14:15,190: sync_channel [1;32m	INFO[0m sending channel input: feature nxapi; strip_prompt: True; eager: False
+2026-10-02 11:14:15,922: sync_channel [1;32m	INFO[0m sending channel input: feature telnet; strip_prompt: True; eager: False
+2026-10-02 11:14:16,008: sync_channel [1;32m	INFO[0m sending channel input: feature netconf; strip_prompt: True; eager: False
+2026-10-02 11:14:17,812: sync_channel [1;32m	INFO[0m sending channel input: feature grpc; strip_prompt: True; eager: False
+2026-10-02 11:14:20,513: sync_channel [1;32m	INFO[0m sending channel input: !; strip_prompt: True; eager: False
+2026-10-02 11:14:20,567: sync_channel [1;32m	INFO[0m sending channel input: no terminal dont-ask; strip_prompt: True; eager: False
+2026-10-02 11:14:20,656: sync_channel [1;32m	INFO[0m sending channel input: copy running-config startup-config; strip_prompt: True; eager: False
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:hostname nx1
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:username admin password 0 admin role network-admin
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:WARNING: Minimum recommended length of 8 characters.
+WARNING: Password should contain characters from at least three of the following classes: lower case letters, upper case letters, digits and special characters.
+WARNING: it is too short
+WARNING: Configuration accepted because password strength check is disabled
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:!
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:vrf context management
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:ip route 0.0.0.0/0 10.0.0.2
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:ipv6 route ::/0 2001:db8::1
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:exit
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:!
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:interface mgmt0
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:ip address 10.0.0.15/24
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:ipv6 address 2001:db8::2/64
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:exit
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:!
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:ssh key rsa 2048 force
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:feature ssh
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:!
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:feature scp-server
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:feature nxapi
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:feature telnet
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:feature netconf
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:2026 Oct  2 11:14:14 nx1 %$ VDC-1 %$ %SECURITYD-2-FEATURE_NXAPI_ENABLE: Feature nxapi is being enabled on HTTPS.
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m CONFIG:feature grpc
+2026-10-02 11:14:22,908: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,909: launch     [1;32m	INFO[0m CONFIG:!
+2026-10-02 11:14:22,909: launch     [1;32m	INFO[0m RESULT:
+2026-10-02 11:14:22,909: base_driver [1;32m	INFO[0m closing connection to '127.0.0.1' on port '22'
+2026-10-02 11:14:22,954: base_driver [1;32m	INFO[0m attempting to acquire 'privilege_exec' privilege level
+2026-10-02 11:14:22,954: sync_channel [1;32m	INFO[0m sending channel input: end; strip_prompt: True; eager: False
+2026-10-02 11:14:23,092: base_driver [1;32m	INFO[0m attempting to acquire 'privilege_exec' privilege level
+2026-10-02 11:14:23,092: base_driver [1;32m	INFO[0m connection to '127.0.0.1' on port '22' closed successfully
+2026-10-02 11:14:23,092: launch     [1;32m	INFO[0m Startup complete in: 0:03:06.425904
