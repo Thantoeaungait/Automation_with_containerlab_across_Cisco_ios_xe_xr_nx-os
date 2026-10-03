@@ -5,6 +5,7 @@ name: mvauto
 mgmt:
   network: mvauto-mgmt
   ipv4-subnet: 172.30.30.0/24
+  mtu: 1500
 
 topology:
   kinds:
