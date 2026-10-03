@@ -9,16 +9,16 @@
       "id": "xe1",
       "interfacePattern": "Gi{n}",
       "position": {
-        "x": 380,
-        "y": 400
+        "x": 440,
+        "y": 280
       }
     },
     {
       "id": "xr1",
       "interfacePattern": "Gi0/0/0/{n}",
       "position": {
-        "x": 440,
-        "y": 260
+        "x": 360,
+        "y": 400
       }
     },
     {
