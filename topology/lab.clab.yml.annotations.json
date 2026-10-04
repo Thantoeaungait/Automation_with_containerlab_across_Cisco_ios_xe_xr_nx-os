@@ -1,5 +1,263 @@
 {
-  "freeTextAnnotations": [],
+  "freeTextAnnotations": [
+    {
+      "id": "title",
+      "text": "The Cisco OS Trilogy in One Lab",
+      "position": {
+        "x": 352.43742575973874,
+        "y": -84.92753266571495
+      },
+      "fontSize": 24,
+      "fontColor": "#ffffff",
+      "backgroundColor": "transparent",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "sans-serif",
+      "rotation": 0,
+      "roundedBackground": false
+    },
+    {
+      "id": "subtitle",
+      "text": "containerlab · Ansible · pyATS · Nornir · NETCONF / RESTCONF / gNMI",
+      "position": {
+        "x": 353.28064046968314,
+        "y": -35.2964412983305
+      },
+      "fontSize": 14,
+      "fontColor": "#e3e3e3",
+      "backgroundColor": "transparent",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "sans-serif",
+      "rotation": 0,
+      "roundedBackground": false
+    },
+    {
+      "id": "info-xe1",
+      "text": "Catalyst 8000v · IOS XE\nLo0 1.1.1.1 · Lo200 10.255.1.1\nmgmt 172.30.30.11",
+      "position": {
+        "x": 394.14797123371386,
+        "y": 66.22092539607489
+      },
+      "fontSize": 12,
+      "fontColor": "#1d4ed8",
+      "backgroundColor": "#19233e",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "monospace",
+      "rotation": 0,
+      "width": 249,
+      "height": 86,
+      "roundedBackground": true
+    },
+    {
+      "id": "info-xr1",
+      "text": "XRv9000 · IOS XR\nLo0 2.2.2.2 · Lo200 10.255.2.2\nmgmt 172.30.30.12",
+      "position": {
+        "x": 105.34358974358935,
+        "y": 495.8871794871794
+      },
+      "fontSize": 12,
+      "fontColor": "#047857",
+      "backgroundColor": "#a7fbd4",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "monospace",
+      "rotation": 0,
+      "roundedBackground": true
+    },
+    {
+      "id": "info-nx1",
+      "text": "Nexus 9000v-lite · NX-OS\nLo0 3.3.3.3 · Lo200 10.255.3.3\nmgmt 172.30.30.13",
+      "position": {
+        "x": 702.9572649572648,
+        "y": 488.8307692307691
+      },
+      "fontSize": 12,
+      "fontColor": "#c2410c",
+      "backgroundColor": "#fff7ed",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "monospace",
+      "rotation": 0,
+      "roundedBackground": true
+    },
+    {
+      "id": "net-12",
+      "text": "10.0.12.0/30",
+      "position": {
+        "x": 338.8390826833361,
+        "y": 265.41736242923116
+      },
+      "fontSize": 12,
+      "fontColor": "#ffffff",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "monospace",
+      "rotation": 307,
+      "roundedBackground": true
+    },
+    {
+      "id": "net-13",
+      "text": "10.0.13.0/30",
+      "position": {
+        "x": 596.0041014834454,
+        "y": 261.07519803509473
+      },
+      "fontSize": 12,
+      "fontColor": "#ffffff",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "monospace",
+      "rotation": 52,
+      "roundedBackground": true
+    },
+    {
+      "id": "legend",
+      "text": "OSPF area 0 (point-to-point) underlay\n iBGP AS 65000 full mesh between Loopback0 \nLoopback200 (10.255.x.x) is advertised only via BGP",
+      "position": {
+        "x": 361.22393162393143,
+        "y": 583.5350427350427
+      },
+      "fontSize": 13,
+      "fontColor": "#4b5563",
+      "backgroundColor": "#a4a2a2",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "sans-serif",
+      "rotation": 0,
+      "roundedBackground": false
+    },
+    {
+      "id": "freeText_1791117550538",
+      "text": ".1",
+      "position": {
+        "x": 345.1704297915724,
+        "y": 448.8515864340484
+      },
+      "fontSize": 12,
+      "fontColor": "#ffffff",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "monospace"
+    },
+    {
+      "id": "freeText_1791117573049",
+      "text": ".2",
+      "position": {
+        "x": 654.764718836979,
+        "y": 451.2889265577176
+      },
+      "fontSize": 12,
+      "fontColor": "#ffffff",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "monospace",
+      "width": 40,
+      "height": 50
+    },
+    {
+      "id": "freeText_1791117681183",
+      "text": "10.0.23.0/30",
+      "position": {
+        "x": 471.1495665124853,
+        "y": 449.14278412955946
+      },
+      "fontSize": 12,
+      "fontColor": "#ffffff",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "monospace"
+    },
+    {
+      "id": "freeText_1791117761581",
+      "text": ".2",
+      "position": {
+        "x": 680.952967160405,
+        "y": 333.1479949953968
+      },
+      "fontSize": 12,
+      "fontColor": "#ffffff",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "monospace",
+      "rotation": 52,
+      "width": 40,
+      "height": 58
+    },
+    {
+      "id": "freeText_1791117845371",
+      "text": ".1",
+      "position": {
+        "x": 573.3518351525122,
+        "y": 192.5984865195901
+      },
+      "fontSize": 12,
+      "fontColor": "#ffffff",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "monospace",
+      "rotation": 53
+    },
+    {
+      "id": "freeText_1791117881154",
+      "text": ".1",
+      "position": {
+        "x": 424.65799081227806,
+        "y": 199.7594677350722
+      },
+      "fontSize": 12,
+      "fontColor": "#ffffff",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "monospace",
+      "rotation": 307
+    },
+    {
+      "id": "freeText_1791117894882",
+      "text": ".2",
+      "position": {
+        "x": 313.52346355023485,
+        "y": 335.30131542931883
+      },
+      "fontSize": 12,
+      "fontColor": "#ffffff",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "monospace",
+      "rotation": 306
+    }
+  ],
   "freeShapeAnnotations": [],
   "trafficRateAnnotations": [],
   "groupStyleAnnotations": [],
@@ -7,29 +265,44 @@
   "nodeAnnotations": [
     {
       "id": "xe1",
-      "interfacePattern": "Gi{n}",
       "position": {
-        "x": 440,
-        "y": 280
-      }
+        "x": 500,
+        "y": 160
+      },
+      "iconColor": "#1d4ed8",
+      "interfacePattern": "Gi{n}"
     },
     {
       "id": "xr1",
-      "interfacePattern": "Gi0/0/0/{n}",
       "position": {
-        "x": 360,
-        "y": 400
-      }
+        "x": 300,
+        "y": 420
+      },
+      "iconColor": "#059669",
+      "interfacePattern": "Gi0/0/0/{n}"
     },
     {
       "id": "nx1",
       "position": {
-        "x": 540,
-        "y": 400
-      }
+        "x": 700,
+        "y": 420
+      },
+      "iconColor": "#ea580c"
     }
   ],
   "edgeAnnotations": [],
   "aliasEndpointAnnotations": [],
-  "viewerSettings": {}
+  "viewerSettings": {
+    "gridBgColor": "#434242",
+    "gridColor": "#ffffff",
+    "gridStyle": "dotted",
+    "linkLabelMode": "show-all",
+    "style": "default",
+    "lastNonTelemetryLinkLabelMode": "show-all",
+    "telemetryNodeSizePx": 40,
+    "telemetryInterfaceSizePercent": 100,
+    "showRateLabels": false,
+    "autoCreateTrafficRateAnnotations": false,
+    "gridLineWidth": 0.5
+  }
 }

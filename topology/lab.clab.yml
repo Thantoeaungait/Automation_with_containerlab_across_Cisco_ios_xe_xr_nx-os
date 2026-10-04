@@ -13,7 +13,7 @@ name: mvauto
 
 mgmt:
   network: mvauto-mgmt
-  ipv4-subnet: 172.30.30.0/24     # deliberately NOT the clab default (172.20.20.0/24)
+  ipv4-subnet: 172.30.30.0/24
 
 topology:
   kinds:
@@ -24,25 +24,22 @@ topology:
     cisco_n9kv:
       image: ${N9KV_IMAGE:=vrnetlab/cisco_n9kv:9500-lite-10.5.5.M}
       env:
-        QEMU_MEMORY: ${N9KV_MEMORY:=6144}   # MB; full (non-lite) N9Kv needs 10240
-        QEMU_SMP: ${N9KV_SMP:=2}            # full N9Kv needs 4
+        QEMU_MEMORY: ${N9KV_MEMORY:=6144} # MB; full (non-lite) N9Kv needs 10240
+        QEMU_SMP: ${N9KV_SMP:=2} # full N9Kv needs 4
 
   nodes:
     xe1:
       kind: cisco_c8000v
-      mgmt-ipv4: 172.30.30.11     # admin / admin
+      mgmt-ipv4: 172.30.30.11 # admin / admin
     xr1:
       kind: cisco_xrv9k
-      mgmt-ipv4: 172.30.30.12     # clab / clab@123
-      startup-config: configs/xr1.cfg   # raise SSH rate limit before automation connects
+      mgmt-ipv4: 172.30.30.12 # clab / clab@123
+      startup-config: configs/xr1.cfg # raise SSH rate limit before automation connects
     nx1:
       kind: cisco_n9kv
-      mgmt-ipv4: 172.30.30.13     # admin / admin
+      mgmt-ipv4: 172.30.30.13 # admin / admin
 
   links:
-    # c8000v: eth1 -> GigabitEthernet2,       eth2 -> GigabitEthernet3
-    # xrv9k:  eth1 -> GigabitEthernet0/0/0/0, eth2 -> GigabitEthernet0/0/0/1
-    # n9kv:   eth1 -> Ethernet1/1,            eth2 -> Ethernet1/2
-    - endpoints: ["xe1:eth1", "xr1:eth1"]
-    - endpoints: ["xr1:eth2", "nx1:eth1"]
-    - endpoints: ["nx1:eth2", "xe1:eth2"]
+    - endpoints: [ "xe1:Gi2", "xr1:Gi0/0/0/0" ]
+    - endpoints: [ "xr1:Gi0/0/0/1", "nx1:Ethernet1/1" ]
+    - endpoints: [ "nx1:Ethernet1/2", "xe1:Gi3" ]
