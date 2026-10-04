@@ -45,12 +45,13 @@ Mention the image versions (`make env`, `docker images`) and containerlab versio
 
 ## Adding a node or platform
 
-1. Add the node to `topology/lab.clab.yml` with a fixed `mgmt-ipv4`.
+1. Add the node to `topology/lab.clab.yml` with a fixed `mgmt-ipv4`, using the device's own interface names in `links:`.
 2. Add it to `sot/fabric.yml`.
 3. Add inventory entries: `ansible/inventory`, `nr/inventory`, `validation/testbed.yaml`, `api/lab_devices.py`.
 4. Add templates under `ansible/templates/{bootstrap,day1}/` and tasks in the playbooks.
 5. Add OSPF/ping command mappings in `validation/validate.py` and audit rules in `nr/backup_and_audit.py`.
 6. Document image preparation in `docs/IMAGES.md`.
+7. Place the node in TopoViewer (updates `topology/lab.clab.yml.annotations.json`) and refresh `docs/topologyimages/topology.png`.
 
 ## Reporting bugs
 

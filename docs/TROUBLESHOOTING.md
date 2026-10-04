@@ -69,6 +69,9 @@ Search this page for the exact error text you see.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `11/12 passed` right after `configure`; a rerun passes | OSPF still converging or routes not yet installed | Rerun `make validate`; validation retries pings automatically |
+| `make validate` right after `make deploy` shows 0 OSPF neighbors (older versions crashed with `Invalid command`) | `bootstrap` and `configure` were skipped, so OSPF isn't configured (on NX-OS even `feature ospf` is missing) | `make bootstrap configure validate` |
+| `ParserNotFound: show ip ospf neighbors` for NX-OS | No Genie parser for this NX-OS release (e.g. 10.5) | Harmless: validation falls back to counting `FULL` in the raw output |
+| `xe1 -> xr1:10.255.x.x` fails, other BGP prefixes pass | IOS XR delays BGP advertisements after its BGP process starts | Baseline validation skips BGP-only loopbacks; `make validate-bgp` waits up to 3 minutes |
 | A ping keeps failing | Missing route or interface mapping | On the source device: `show ip route <loopback>`; check OSPF neighbors on both ends |
 | N9Kv 9500v interfaces don't match | The 9500v emulates a modular chassis | Check `show interface brief`; the 9300v-lite image is simpler for leaf/spine labs |
 
@@ -129,6 +132,17 @@ If you get gNMI working on XRv9000 under vrnetlab, a pull request is very welcom
 | `make drift` reports drift right after deploy | `golden/` is from an earlier deployment | Run `make golden` after each successful `make configure validate` |
 | Drift on lines that change by themselves | A volatile line (timestamp, counter) isn't filtered | Add its pattern to `VOLATILE` in `nr/drift.py` |
 | `drift-check` says no drift but `drift` shows changes | The change is in config the templates don't manage | Expected — that's why both methods exist |
+
+## Topology and diagram
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Deploy error mentioning `Gi1` on xe1 | `Gi1` is the C8000v management interface | Data links start at `Gi2` |
+| Diagram still shows `eth1` / `eth2` | Endpoint labels come from `links:` in the topology, not from annotations | Use Cisco names in `links:`; `interfacePattern` only names links you create in the editor |
+| Exported SVG has nodes and links but no text | TopoViewer writes free text as `<foreignObject>` (HTML inside SVG), which only browsers render | Open the SVG in Firefox/Chrome, or convert: `firefox --headless --window-size=1600,1000 --screenshot topology.png file://$PWD/topology.svg`. Check with `grep -c foreignObject topology.svg` |
+| Text invisible in an exported SVG | Transparent background + dark text viewed on a dark background | Export with a custom background colour |
+| Image not shown on GitHub | Wrong path or case (`Topology.png` ≠ `topology.png`) | Check `ls docs/topologyimages/` and the `src` in README |
+| A new `docs/images/` folder is not committed | `.gitignore` ignores every `images/` folder (to keep Cisco images out of Git) | The diagram lives in `docs/topologyimages/` for that reason |
 
 ## Lint (`make lint`)
 

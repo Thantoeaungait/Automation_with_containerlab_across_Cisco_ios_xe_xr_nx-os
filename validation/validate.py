@@ -82,8 +82,11 @@ def ospf_full_count(dev, os_name: str) -> int:
         return count_full(dev.parse(cmd))
     except SchemaEmptyParserError:
         return 0
-    except Exception:  # parser gap on a new release -> fall back to raw text
-        raw = dev.execute(cmd, timeout=60)
+    except Exception:  # parser gap on a new release (e.g. NX-OS 10.5) -> fall back to raw text
+        try:
+            raw = dev.execute(cmd, timeout=60)
+        except Exception:  # command rejected, e.g. OSPF not configured yet
+            return 0
         return len(re.findall(r"\bFULL\b", raw))
 
 

@@ -5,7 +5,7 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
-## [1.2.0] - 2026-10-05
+## [1.2.0] - 2026-10-04
 
 ### Added
 - **iBGP** (AS 65000) full mesh between Loopback0 addresses, rendered from `bgp:` in the SoT. Neighbors are
@@ -19,11 +19,17 @@ All notable changes to this project are documented here. Format follows
   (`nr/drift.py`, running-config vs saved baseline, ignoring timestamp lines).
 - Pipeline stages: validate BGP, prune the change, validate back to baseline, SoT drift check.
 - Audit rules for the BGP process on all platforms.
+- Topology diagram in the README (`docs/topologyimages/topology.png`, outside the git-ignored `images/`
+  folders), drawn in the containerlab VS Code extension. `topology/lab.clab.yml.annotations.json` stores
+  the layout: title, per-node info boxes (platform, Lo0, Lo200, mgmt), subnet and `.1`/`.2` labels.
 
 ### Changed
 - Templates support `ospf: false` loopbacks; `scripts/render_templates.py` passes `devices` and `bgp`.
 - `save_when: changed` instead of `modified` in all playbooks. IOS XE always shows small differences
   between running and startup config, so `modified` saved (and reported `changed`) on every run.
+- Topology links use the devices' own interface names (`Gi2`, `Gi0/0/0/0`, `Ethernet1/1`) instead of
+  `eth1`/`eth2`, so the topology file, the SoT and `show` output match.
+- `validate_bgp.py` waits up to 3 minutes for BGP prefixes (IOS XR advertisement delay).
 
 ### Fixed
 - IOS XE reported `changed=1` on every `make configure`, which also made drift checks unreliable.
@@ -31,11 +37,15 @@ All notable changes to this project are documented here. Format follows
   `xe1 -> xr1:10.255.2.2`), because IOS XR can delay BGP advertisements after its BGP process starts.
   Baseline validation now pings only loopbacks that are in OSPF (`ospf: false` ones are skipped);
   BGP-advertised prefixes are checked by `make validate-bgp`, which waits for them.
+- `validate.py` reports 0 OSPF neighbors instead of crashing when OSPF isn't configured yet
+  (e.g. running `make validate` before `bootstrap`/`configure`).
 
 ### Documentation
 - README: BGP in the topology, prune and drift sections, new targets and `KEEP_CHANGE`.
 - TROUBLESHOOTING: idempotency on IOS XE, system vs venv Ansible (`paramiko` missing), BGP checks,
   drift false positives, yamllint warnings vs errors.
+- README: topology diagram and section on how it is maintained; interface naming note.
+- TROUBLESHOOTING: topology and diagram issues (interface names, SVG export without text, image paths).
 
 ## [1.1.0] - 2026-10-03
 

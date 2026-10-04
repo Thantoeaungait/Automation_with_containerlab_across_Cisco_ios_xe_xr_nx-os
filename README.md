@@ -147,6 +147,9 @@ To keep the lab when the pipeline fails: `KEEP_LAB=1 ./scripts/ci.sh`.
 | RESTCONF (requests) | HTTPS :443 | ✔ | — not implemented on IOS XR | ✔ via NX-API |
 | gNMI (gnmic) | gRPC :57400 | — see limitations | — see limitations | ✔ TLS, self-signed |
 
+Links in `topology/lab.clab.yml` use the interface names you see on each device (`Gi2`, `Gi0/0/0/0`,
+`Ethernet1/1`), so the topology file, the SoT and `show` output all match.
+
 Default credentials (containerlab defaults): xe1 / nx1 `admin` / `admin`, xr1 `clab` / `clab@123`.
 
 ## Removing configuration and detecting drift
@@ -194,14 +197,14 @@ To change the permanent design (links, addressing, nodes), edit `sot/fabric.yml`
 
 ```
 .
-├── topology/            lab.clab.yml · configs/xr1.cfg (startup snippet) · *.annotations.json (diagram layout)
+├── topology/            lab.clab.yml (Cisco interface names) · configs/xr1.cfg · *.annotations.json (TopoViewer diagram)
 ├── sot/                 fabric.yml (intent) · changes/*.yml (change sets)
 ├── ansible/             inventory · playbooks (bootstrap, configure, prune) · templates (bootstrap, day1)
 ├── nr/                  Nornir: wait_ready.py · backup_and_audit.py · drift.py · inventory
 ├── validation/          pyATS testbed.yaml · validate.py · validate_bgp.py (intent-derived checks, JUnit)
 ├── api/                 netconf_get.py · restconf_get.py · gnmi_check.sh
 ├── scripts/             00-host-setup.sh · 01-build-images.sh · ci.sh · render_templates.py
-├── docs/                IMAGES.md · ARCHITECTURE.md · TROUBLESHOOTING.md
+├── docs/                IMAGES.md · ARCHITECTURE.md · TROUBLESHOOTING.md · topologyimages/topology.png
 ├── .github/             lint workflow · issue and pull request templates
 ├── lab.env.example      optional local overrides (copy to lab.env)
 └── Makefile             entry point for every stage
@@ -245,6 +248,13 @@ This lab keeps things simple on purpose. A production setup would typically add:
   managed resources (`state: replaced` / `overridden`), with guardrails for management interfaces.
 - **Scheduled drift alerts** — `make drift` from cron or a pipeline, with notifications instead of a log file.
 - **Change approval** — pull request reviews and a pipeline gate before anything reaches real devices.
+
+## Topology diagram
+
+`topology/lab.clab.yml.annotations.json` holds the diagram layout for the containerlab VS Code
+extension (TopoViewer): node positions, colours, the title, per-node info boxes and subnet labels.
+Open the topology in VS Code to see it. To refresh `docs/topologyimages/topology.png`, adjust the layout in
+TopoViewer and take a screenshot (see TROUBLESHOOTING for why SVG export may lose the text).
 
 ## Documentation
 
