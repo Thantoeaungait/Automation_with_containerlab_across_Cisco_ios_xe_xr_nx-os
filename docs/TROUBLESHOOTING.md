@@ -29,6 +29,7 @@ Search this page for the exact error text you see.
 | `ERROR: Incorrect version string (virtioa.qcow2)` | EVE-NG style file name without a version | Rename to `xrv9k-fullk9-x-<X.Y.Z>.qcow2`, or pass `XRV9K_VERSION=` |
 | A second C8000v image `controller-...` appears | vrnetlab builds autonomous + controller mode by default | The script builds autonomous only; `C8KV_CONTROLLER=1` for both |
 | `./scripts/01-build-images.sh: No such file or directory` | Wrong working directory | `cd` to the repository root |
+| `integer expression expected` near the XRv9000 size check | Older script parsed `qemu-img` JSON with sed and picked up nested values | Fixed: the size is read with a JSON parser (the warning was harmless) |
 
 ## Fresh clone
 
@@ -89,6 +90,7 @@ Search this page for the exact error text you see.
 | NETCONF xr1: `Connection reset by peer` on :830 | NETCONF enabled in the wrong VRF (XRv9000 management is in `clab-mgmt`) | Bootstrap detects the VRF and adds `ssh server netconf vrf <mgmt-vrf>`. Verify: `show tcp brief \| include 830` |
 | NETCONF nx1 shows `hostname (native model)` only | NX-OS image lacks the OpenConfig bundle | Expected fallback; counts as a pass |
 | RESTCONF has no xr1 section | IOS XR does not implement RESTCONF | By design |
+| RESTCONF nx1: HTTP 200 but `Expecting value` / JSON decode error | Some NX-OS releases return YANG XML even when JSON is requested | Fixed: the script prints JSON or XML based on `Content-Type` |
 | gNMI nx1 TLS error after a long uptime | NX-OS self-signed gRPC certificate is short-lived | Install your own: `grpc certificate <trustpoint>` |
 
 ### XRv9000 gNMI and the management VRF

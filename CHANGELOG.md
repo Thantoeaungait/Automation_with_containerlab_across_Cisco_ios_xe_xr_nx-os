@@ -5,6 +5,14 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Fixed
+- `api/restconf_get.py` stopped the pipeline when NX-OS answered HTTP 200 with YANG XML instead of the
+  requested JSON. Responses are now printed as JSON or XML based on the content type.
+- `scripts/01-build-images.sh` printed a parsing warning in the XRv9000 image-size check (nested
+  `virtual-size` entries in `qemu-img` JSON). The size is now read with a JSON parser.
+
+Both found by Jeleel Muibi while reproducing the lab on a fresh Proxmox host.
+
 ## [1.2.0] - 2026-10-04
 
 ### Added

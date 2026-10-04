@@ -8,6 +8,7 @@ import argparse
 import json
 import sys
 import time
+from xml.dom import minidom
 
 import requests
 import urllib3
@@ -36,6 +37,22 @@ def get(session: requests.Session, url: str, retries: int = 6) -> requests.Respo
     raise RuntimeError(f"giving up on {url}")
 
 
+def render(r: requests.Response) -> str:
+    """Pretty-print a RESTCONF body as JSON or XML, whichever the device returned.
+
+    Some NX-OS releases answer with YANG XML even when JSON is requested (HTTP 200).
+    """
+    ctype = r.headers.get("Content-Type", "")
+    try:
+        if "json" in ctype or r.text.lstrip().startswith(("{", "[")):
+            return json.dumps(r.json(), indent=2)
+        if "xml" in ctype or r.text.lstrip().startswith("<"):
+            return minidom.parseString(r.text).toprettyxml(indent="  ").split("\n", 1)[1].strip()
+    except ValueError:
+        pass
+    return r.text.strip()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--set-description", help="PATCH xe1 Loopback0 description via RESTCONF")
@@ -50,9 +67,10 @@ def main() -> int:
         for path in paths:
             try:
                 r = get(s, f"https://{d['host']}{path}")
-                print(f"  GET {path} -> {r.status_code}")
+                ctype = r.headers.get("Content-Type", "unknown").split(";")[0]
+                print(f"  GET {path} -> {r.status_code} ({ctype})")
                 if r.ok and r.text:
-                    print("  " + json.dumps(r.json(), indent=2).replace("\n", "\n  "))
+                    print("  " + render(r).replace("\n", "\n  "))
                 elif not r.ok:
                     failed = True
             except Exception as exc:

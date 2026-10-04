@@ -107,8 +107,10 @@ build_xrv9k() {
     dest="xrv9k-fullk9-x-${XRV9K_VERSION}.qcow2"
   fi
   local vsize
-  vsize=$(qemu-img info --output=json "$f" 2>/dev/null | sed -n 's/.*"virtual-size": \([0-9]*\).*/\1/p' || true)
-  if [[ -n "$vsize" && "$vsize" -lt 20000000000 ]]; then
+  # first "virtual-size" only: qemu-img JSON can contain nested entries (e.g. a backing file)
+  vsize=$(qemu-img info --output=json "$f" 2>/dev/null \
+          | python3 -c 'import json,sys; print(json.load(sys.stdin).get("virtual-size", ""))' 2>/dev/null || true)
+  if [[ "$vsize" =~ ^[0-9]+$ ]] && (( vsize < 20000000000 )); then
     warn "$(basename "$f") virtual size is $((vsize/1024/1024/1024)) GB: may be classic XRv, not XRv9k"
   fi
   stage "$f" "$dir" "$dest"
