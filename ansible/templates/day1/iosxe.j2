@@ -6,7 +6,9 @@ router ospf {{ ospf.process_id }}
 {% for lo in dev.loopbacks + extra_loopbacks %}
 interface {{ lo.name }}
  ip address {{ lo.ipv4 | ansible.utils.ipaddr('address') }} {{ lo.ipv4 | ansible.utils.ipaddr('netmask') }}
+{% if lo.ospf | default(true) %}
  ip ospf {{ ospf.process_id }} area {{ ospf.area }}
+{% endif %}
 !
 {% endfor %}
 {% for intf in dev.interfaces %}
@@ -16,3 +18,21 @@ interface {{ intf.name }}
  ip ospf {{ ospf.process_id }} area {{ ospf.area }}
 !
 {% endfor %}
+{% if bgp is defined %}
+router bgp {{ bgp.asn }}
+ bgp router-id {{ dev.router_id }}
+ bgp log-neighbor-changes
+{% for name, peer in devices.items() if name != inventory_hostname %}
+ neighbor {{ peer.router_id }} remote-as {{ bgp.asn }}
+ neighbor {{ peer.router_id }} update-source Loopback0
+{% endfor %}
+ !
+ address-family ipv4
+{% for net in dev.bgp_networks | default([]) %}
+  network {{ net | ansible.utils.ipaddr('address') }} mask {{ net | ansible.utils.ipaddr('netmask') }}
+{% endfor %}
+{% for name, peer in devices.items() if name != inventory_hostname %}
+  neighbor {{ peer.router_id }} activate
+{% endfor %}
+ exit-address-family
+{% endif %}

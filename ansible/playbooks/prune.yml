@@ -1,0 +1,67 @@
+---
+# Remove loopbacks that exist on the device but are NOT in the source of truth.
+#   Preview:  ansible-playbook ansible/playbooks/prune.yml --check --diff
+#   Apply:    ansible-playbook ansible/playbooks/prune.yml
+#   With a change set still "live": add  -e @sot/changes/loopback100.yml
+- name: Prune loopbacks not declared in the SoT
+  hosts: lab
+  gather_facts: false
+  vars_files:
+    - ../../sot/fabric.yml
+  vars:
+    dev: "{{ devices[inventory_hostname] }}"
+    extra_loopbacks: "{{ ((changes | default({})).get(inventory_hostname, {})).get('loopbacks', []) }}"
+    intended: "{{ (dev.loopbacks + extra_loopbacks) | map(attribute='name') | map('lower') | list }}"
+    protected: [loopback0]          # never delete, even if someone removes it from the SoT
+
+  tasks:
+    - name: IOS XE - gather interfaces
+      when: ansible_network_os == 'cisco.ios.ios'
+      cisco.ios.ios_interfaces:
+        state: gathered
+      register: g_xe
+
+    - name: IOS XR - gather interfaces
+      when: ansible_network_os == 'cisco.iosxr.iosxr'
+      cisco.iosxr.iosxr_interfaces:
+        state: gathered
+      register: g_xr
+
+    - name: NX-OS - gather interfaces
+      when: ansible_network_os == 'cisco.nxos.nxos'
+      cisco.nxos.nxos_interfaces:
+        state: gathered
+      register: g_nx
+
+    # Skipped tasks register no 'gathered' key, so default([]) keeps this platform-neutral
+    # Names are compared in lower case (NX-OS uses "loopback", XE/XR "Loopback");
+    # the CLI accepts lower-case interface names on all three platforms.
+    - name: Compute stale loopbacks
+      ansible.builtin.set_fact:
+        stale: >-
+          {{ ((g_xe.gathered | default([])) + (g_xr.gathered | default([])) + (g_nx.gathered | default([])))
+             | map(attribute='name') | map('lower')
+             | select('match', '^loopback[0-9]+$')
+             | difference(intended + protected) }}
+
+    - name: Show what will be removed
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: remove {{ stale if stale else 'nothing' }}"
+
+    - name: IOS XE - remove stale loopbacks
+      when: ansible_network_os == 'cisco.ios.ios' and stale | length > 0
+      cisco.ios.ios_config:
+        lines: "{{ stale | map('regex_replace', '^', 'no interface ') | list }}"
+        save_when: changed
+
+    - name: IOS XR - remove stale loopbacks (one commit)
+      when: ansible_network_os == 'cisco.iosxr.iosxr' and stale | length > 0
+      cisco.iosxr.iosxr_config:
+        lines: "{{ stale | map('regex_replace', '^', 'no interface ') | list }}"
+        comment: "prune: loopbacks not in SoT"
+
+    - name: NX-OS - remove stale loopbacks
+      when: ansible_network_os == 'cisco.nxos.nxos' and stale | length > 0
+      cisco.nxos.nxos_config:
+        lines: "{{ stale | map('regex_replace', '^', 'no interface ') | list }}"
+        save_when: changed

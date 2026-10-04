@@ -105,12 +105,38 @@ Useful XR commands: `show grpc`, `show tcp brief`, `process restart emsd` (resta
 If you get gNMI working on XRv9000 under vrnetlab, a pull request is very welcome. Test it with
 `make gnmi GNMI_SKIP=xe1`.
 
+## Configure / idempotency
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `xe1 changed=1` on every `make configure`, no diff shown | `save_when: modified` compares running vs startup; IOS XE always shows small differences, so it saves every run | Use `save_when: changed` (save only when the task pushed commands) — the default since v1.2.0 |
+| A task stays `changed` and `-v` shows the same `updates` every run | A template line doesn't match how the OS renders it in running-config | Compare with `show running-config \| section <feature>` and make the template match exactly |
+| `paramiko is not installed: No module named 'paramiko'` | You ran the system `ansible-playbook`, not the one in `.venv` (no `(.venv)` in the prompt) | Use `make ...`, `.venv/bin/ansible-playbook ...`, or `source .venv/bin/activate` first |
+
+## BGP
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Sessions stay `Idle` / `Active` | Loopback0s not reachable (OSPF problem) | `ping 2.2.2.2 source 1.1.1.1`; fix OSPF first (`make validate`) |
+| Sessions Established, BGP prefix missing | `network` statement doesn't match an exact route | Check Loopback200 exists with the `/32` from `bgp_networks` |
+| Check commands | | XE/NX `show ip bgp summary`, XR `show bgp summary`; routes: `show ip route bgp` / `show route bgp` |
+
+## Prune and drift
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `prune` wants to delete a change set's loopback | The change file wasn't passed, so it isn't "intended" | `make prune KEEP_CHANGE=1` (uses `$(CHANGE)`) |
+| `make drift` reports drift right after deploy | `golden/` is from an earlier deployment | Run `make golden` after each successful `make configure validate` |
+| Drift on lines that change by themselves | A volatile line (timestamp, counter) isn't filtered | Add its pattern to `VOLATILE` in `nr/drift.py` |
+| `drift-check` says no drift but `drift` shows changes | The change is in config the templates don't manage | Expected — that's why both methods exist |
+
 ## Lint (`make lint`)
 
 | Symptom | Cause | Fix |
 |---|---|---|
 | Hundreds of yamllint warnings under `ansible/collections/` | yamllint scanned downloaded collections | `.yamllint` ignores `ansible/collections/` and `.venv/` |
 | `trailing spaces` error | Invisible spaces at line ends | `sed -i 's/[[:space:]]*$//' <file>` |
+| `warning too many blank lines (1 > 0)` | An empty line at the end of a YAML file | Only a warning (lint still passes); remove it with `sed -i '${/^$/d}' <file>` |
 
 ## Git
 

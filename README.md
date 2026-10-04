@@ -4,10 +4,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **A learning lab for Cisco network automation.** One containerlab topology runs a Catalyst 8000v,
-an XRv9000 and a Nexus 9000v side by side. Ansible configures them from a single YAML source of
-truth, pyATS validates the result, Nornir audits them, and NETCONF, RESTCONF and gNMI are tested
-from the host. The whole lifecycle — **deploy → configure → validate → change → validate → destroy**
-— runs with one command.
+an XRv9000 and a Nexus 9000v side by side. Ansible configures OSPF and iBGP from a single YAML
+source of truth, pyATS validates the result, Nornir audits the devices and detects drift, and
+NETCONF, RESTCONF and gNMI are tested from the host. The whole lifecycle — **deploy → configure →
+validate → change → validate → prune → drift check → destroy** — runs with one command.
 
 ```
                  xe1  Catalyst 8000v (IOS XE)     172.30.30.11
@@ -18,6 +18,7 @@ from the host. The whole lifecycle — **deploy → configure → validate → c
    172.30.30.12   Gi0/0/0/1         Eth1/1         172.30.30.13
 
    OSPF area 0 (point-to-point) · Loopback0 1.1.1.1 / 2.2.2.2 / 3.3.3.3
+   iBGP AS 65000 full mesh between Loopback0 · Loopback200 10.255.x.x advertised only via BGP
 ```
 
 > **About this project.** I built this lab while learning network automation from scratch. I don't
@@ -53,6 +54,9 @@ from the host. The whole lifecycle — **deploy → configure → validate → c
 - **Changes as data** — a change is a small YAML overlay in `sot/changes/`, validated before you keep it.
 - **Day-0 vs day-1** — bootstrap enables model-driven interfaces over SSH, then day-1 configures the network.
 - **Idempotent configuration** — resource modules for interface state; templates that match running-config.
+- **Underlay + overlay routing** — OSPF carries the loopbacks, iBGP (full mesh) carries extra prefixes.
+- **Removing what isn't declared** — `prune` deletes loopbacks that exist on a device but not in the SoT.
+- **Drift detection** — two complementary methods: SoT vs device (Ansible check mode) and golden config diff.
 - **Multiple automation interfaces** — Ansible, Nornir/Netmiko, pyATS/Genie, NETCONF, RESTCONF, gNMI.
 - **A real pipeline** — readiness polling, JUnit reports, automatic teardown.
 
@@ -127,9 +131,13 @@ To keep the lab when the pipeline fails: `KEEP_LAB=1 ./scripts/ci.sh`.
 | `bootstrap` | Ansible | Day-0: enables NETCONF, RESTCONF, gNMI/gRPC (detects the XR management VRF) |
 | `dry-run` | Ansible | Shows what day-1 would change (`--check --diff`) |
 | `configure` | Ansible | Day-1: addressing + OSPF rendered from `sot/fabric.yml` |
-| `validate` | pyATS/Genie | OSPF FULL neighbors per node + full-mesh loopback pings → `reports/validation-baseline.xml` |
+| `validate` | pyATS/Genie | OSPF FULL neighbors per node + full-mesh pings of OSPF loopbacks → `reports/validation-baseline.xml` |
+| `validate-bgp` | pyATS/Genie | iBGP sessions Established per node + reachability of BGP-only prefixes → `reports/validation-bgp.xml` |
 | `change` | Ansible | Applies a change set (default `sot/changes/loopback100.yml`) |
 | `validate-change` | pyATS/Genie | Re-validates including the change → `reports/validation-change.xml` |
+| `prune` | Ansible | Removes loopbacks not declared in the SoT (Loopback0 is protected); `prune-check` previews |
+| `drift-check` | Ansible | Check mode: fails if any device differs from what the SoT would render |
+| `golden` / `drift` | Nornir | Save running-configs as a baseline / diff them later → `reports/drift-<host>.diff` |
 | `audit` | Nornir | Config backups to `backups/` + compliance rules → `reports/audit.json` |
 | `apis` | ncclient · requests · gnmic | NETCONF, RESTCONF and gNMI smoke tests |
 | `destroy` | containerlab | Tears the lab down |
@@ -148,6 +156,29 @@ To keep the lab when the pipeline fails: `KEEP_LAB=1 ./scripts/ci.sh`.
 | gNMI (gnmic) | gRPC :57400 | — see limitations | — see limitations | ✔ TLS, self-signed |
 
 Default credentials (containerlab defaults): xe1 / nx1 `admin` / `admin`, xr1 `clab` / `clab@123`.
+
+## Removing configuration and detecting drift
+
+Ansible's default behaviour only **adds** configuration. If you delete a loopback from the SoT, it
+stays on the device. This lab handles that in two ways:
+
+```bash
+make change            # add Loopback100 everywhere
+make prune-check       # preview: "remove ['loopback100']"
+make prune             # delete loopbacks that are not in the SoT (Loopback0 is always protected)
+make prune KEEP_CHANGE=1   # keep the change set's loopbacks
+```
+
+Drift is detected with two complementary methods:
+
+| Method | Compares | Catches | Misses |
+|---|---|---|---|
+| `make drift-check` | SoT ↔ device (Ansible check mode) | Changes to lines the automation manages | Config the automation doesn't manage |
+| `make golden` + `make drift` | Saved config ↔ current config | **Any** change, e.g. a manual `ip ospf cost` | Why it changed |
+
+Try it: `make golden`, add `ip ospf cost 50` on xe1 by hand, then run both checks. Only the golden
+diff sees it, because the templates don't manage OSPF cost. Remediate with `make configure prune`
+(and remove unmanaged lines by hand, or bring them into the SoT).
 
 ## Making a change
 
@@ -173,9 +204,9 @@ To change the permanent design (links, addressing, nodes), edit `sot/fabric.yml`
 .
 ├── topology/            lab.clab.yml · configs/xr1.cfg (startup snippet) · *.annotations.json (diagram layout)
 ├── sot/                 fabric.yml (intent) · changes/*.yml (change sets)
-├── ansible/             inventory · playbooks (bootstrap, configure) · templates (bootstrap, day1)
-├── nr/                  Nornir: wait_ready.py · backup_and_audit.py · inventory
-├── validation/          pyATS testbed.yaml · validate.py (intent-derived checks, JUnit output)
+├── ansible/             inventory · playbooks (bootstrap, configure, prune) · templates (bootstrap, day1)
+├── nr/                  Nornir: wait_ready.py · backup_and_audit.py · drift.py · inventory
+├── validation/          pyATS testbed.yaml · validate.py · validate_bgp.py (intent-derived checks, JUnit)
 ├── api/                 netconf_get.py · restconf_get.py · gnmi_check.sh
 ├── scripts/             00-host-setup.sh · 01-build-images.sh · ci.sh · render_templates.py
 ├── docs/                IMAGES.md · ARCHITECTURE.md · TROUBLESHOOTING.md
@@ -196,6 +227,7 @@ All optional. Set them in `lab.env` or on the command line (`make ci GNMI_SKIP=n
 | `TOPO` | `topology/lab.clab.yml` | Topology file |
 | `CHANGE` | `sot/changes/loopback100.yml` | Change set for `change` / `validate-change` |
 | `KEEP_LAB` | `0` | `1` keeps the lab after `ci.sh` |
+| `KEEP_CHANGE` | unset | `1` makes `prune` / `prune-check` keep the loopbacks of `$(CHANGE)` |
 | `WAIT_TIMEOUT` | `1800` | Seconds `make wait` polls |
 
 ## Known limitations
@@ -206,8 +238,10 @@ All optional. Set them in `lab.env` or on the command line (`make ci GNMI_SKIP=n
   Details and what was tried: [TROUBLESHOOTING](docs/TROUBLESHOOTING.md#xrv9000-gnmi-and-the-management-vrf).
 - **RESTCONF on xr1:** IOS XR does not implement RESTCONF.
 - **One lab per host:** fixed management subnet `172.30.30.0/24` and node names.
-- **Validation timing:** right after configuration, OSPF may still be converging; validation retries, and
-  a rerun of `make validate` normally passes.
+- **Validation timing:** right after configuration, OSPF and BGP may still be converging; validation
+  retries, and a rerun normally passes.
+- **Prune scope:** `prune` only manages loopbacks. Other unmanaged config (interfaces, OSPF settings) is
+  reported by `make drift`, not removed.
 
 ## Going further: what production would add
 
@@ -215,8 +249,9 @@ This lab keeps things simple on purpose. A production setup would typically add:
 
 - **Secrets management** — Ansible Vault or a secrets manager instead of plaintext lab credentials.
 - **Verified SSH host keys** and **TLS with real certificates** for NETCONF, RESTCONF and gNMI.
-- **Full desired state** — `state: replaced` / `overridden` so removed intent is also removed from devices.
-- **Drift detection** — a scheduled `make dry-run` that alerts on manual changes.
+- **Full desired state for everything** — `prune` covers loopbacks; production would extend this to all
+  managed resources (`state: replaced` / `overridden`), with guardrails for management interfaces.
+- **Scheduled drift alerts** — `make drift` from cron or a pipeline, with notifications instead of a log file.
 - **Change approval** — pull request reviews and a pipeline gate before anything reaches real devices.
 
 ## Documentation

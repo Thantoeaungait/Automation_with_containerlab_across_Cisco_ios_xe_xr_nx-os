@@ -5,6 +5,38 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-05
+
+### Added
+- **iBGP** (AS 65000) full mesh between Loopback0 addresses, rendered from `bgp:` in the SoT. Neighbors are
+  computed from the device list, so a new device gets peers automatically. `Loopback200` (10.255.x.x) is
+  marked `ospf: false` and reachable only through BGP.
+- `validation/validate_bgp.py` / `make validate-bgp`: Established sessions per device and reachability of
+  BGP-advertised prefixes, with JUnit output.
+- `ansible/playbooks/prune.yml` / `make prune`, `make prune-check`: removes loopbacks that exist on a device
+  but not in the SoT. Loopback0 is protected; `KEEP_CHANGE=1` keeps a change set's loopbacks.
+- Drift detection: `make drift-check` (Ansible check mode, SoT vs device) and `make golden` / `make drift`
+  (`nr/drift.py`, running-config vs saved baseline, ignoring timestamp lines).
+- Pipeline stages: validate BGP, prune the change, validate back to baseline, SoT drift check.
+- Audit rules for the BGP process on all platforms.
+
+### Changed
+- Templates support `ospf: false` loopbacks; `scripts/render_templates.py` passes `devices` and `bgp`.
+- `save_when: changed` instead of `modified` in all playbooks. IOS XE always shows small differences
+  between running and startup config, so `modified` saved (and reported `changed`) on every run.
+
+### Fixed
+- IOS XE reported `changed=1` on every `make configure`, which also made drift checks unreliable.
+- Baseline validation (`make validate`) failed intermittently on BGP-only loopbacks (e.g.
+  `xe1 -> xr1:10.255.2.2`), because IOS XR can delay BGP advertisements after its BGP process starts.
+  Baseline validation now pings only loopbacks that are in OSPF (`ospf: false` ones are skipped);
+  BGP-advertised prefixes are checked by `make validate-bgp`, which waits for them.
+
+### Documentation
+- README: BGP in the topology, prune and drift sections, new targets and `KEEP_CHANGE`.
+- TROUBLESHOOTING: idempotency on IOS XE, system vs venv Ansible (`paramiko` missing), BGP checks,
+  drift false positives, yamllint warnings vs errors.
+
 ## [1.1.0] - 2026-10-03
 
 ### Changed

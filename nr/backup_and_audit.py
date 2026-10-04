@@ -29,17 +29,21 @@ REQUIRED: dict[str, dict[str, str]] = {
         "netconf enabled": r"^netconf-yang$",
         "restconf enabled": r"^restconf$",
         "ospf process": r"^router ospf 1$",
+        "bgp process": r"^router bgp \d+$",
     },
     "cisco_xr": {
         "netconf agent": r"^netconf-yang agent$",
         "grpc enabled": r"^grpc$",
         "ospf process": r"^router ospf 1$",
+        "bgp process": r"^router bgp \d+$",
     },
     "cisco_nxos": {
         "netconf feature": r"^feature netconf$",
         "grpc feature": r"^feature grpc$",
         "ospf feature": r"^feature ospf$",
         "ospf process": r"^router ospf 1$",
+        "bgp feature": r"^feature bgp$",
+        "bgp process": r"^router bgp \d+$",
     },
 }
 

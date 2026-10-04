@@ -34,7 +34,7 @@ def main() -> None:
     for host, dev in sot["devices"].items():
         print(f"!---------------- {host} ({dev['platform']}) ----------------")
         print(env.get_template(f"{dev['platform']}.j2").render(
-            inventory_hostname=host, dev=dev, ospf=sot["ospf"],
+            inventory_hostname=host, dev=dev, ospf=sot["ospf"], devices=sot["devices"], **({"bgp": sot["bgp"]} if "bgp" in sot else {}),
             extra_loopbacks=changes.get(host, {}).get("loopbacks", []),
         ))
 

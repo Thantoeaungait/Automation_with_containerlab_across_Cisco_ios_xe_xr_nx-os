@@ -53,7 +53,8 @@ def load_intent(change_file: Path | None) -> tuple[dict, dict[str, int], dict[st
 
     neighbors = {n: len(d["interfaces"]) for n, d in devices.items()}
     loopbacks = {
-        n: [addr(lo["ipv4"]) for lo in d["loopbacks"] + changes.get(n, {}).get("loopbacks", [])]
+        n: [addr(lo["ipv4"]) for lo in d["loopbacks"] + changes.get(n, {}).get("loopbacks", [])
+            if lo.get("ospf", True)]        # BGP-only loopbacks are checked by validate_bgp.py
         for n, d in devices.items()
     }
     source = {n: addr(d["loopbacks"][0]["ipv4"]) for n, d in devices.items()}
