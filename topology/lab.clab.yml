@@ -40,6 +40,8 @@ topology:
       mgmt-ipv4: 172.30.30.13 # admin / admin
 
   links:
+    # Cisco interface names are accepted directly by containerlab (no eth1/eth2 mapping needed).
+    # C8000v data ports start at Gi2 (Gi1 is management); N9Kv uses Ethernet1/X; XRv9000 Gi0/0/0/X.
     - endpoints: [ "xe1:Gi2", "xr1:Gi0/0/0/0" ]
     - endpoints: [ "xr1:Gi0/0/0/1", "nx1:Ethernet1/1" ]
     - endpoints: [ "nx1:Ethernet1/2", "xe1:Gi3" ]

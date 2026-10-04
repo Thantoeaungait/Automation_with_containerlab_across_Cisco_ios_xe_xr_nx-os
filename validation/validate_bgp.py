@@ -69,7 +69,7 @@ def main() -> int:
                 continue
             for net in d.get("bgp_networks", []):
                 ip, pct, t1 = addr(net), 0, time.monotonic()
-                for _ in range(6):
+                for _ in range(18):  # IOS XR may delay BGP advertisements up to ~120 s
                     pct = ping_success_pct(dev.execute(ping_cmd(dev.os, ip, src_ip), timeout=90))
                     if pct >= 60:
                         break
