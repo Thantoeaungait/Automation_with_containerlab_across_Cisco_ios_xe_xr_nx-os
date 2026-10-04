@@ -9,17 +9,9 @@ source of truth, pyATS validates the result, Nornir audits the devices and detec
 NETCONF, RESTCONF and gNMI are tested from the host. The whole lifecycle — **deploy → configure →
 validate → change → validate → prune → drift check → destroy** — runs with one command.
 
-```
-                 xe1  Catalyst 8000v (IOS XE)     172.30.30.11
-             Gi2 /                       \ Gi3
-        10.0.12.0/30                  10.0.13.0/30
-      Gi0/0/0/0 /                           \ Eth1/2
-   xr1  XRv9000 (IOS XR) —— 10.0.23.0/30 —— nx1  Nexus 9000v-lite (NX-OS)
-   172.30.30.12   Gi0/0/0/1         Eth1/1         172.30.30.13
-
-   OSPF area 0 (point-to-point) · Loopback0 1.1.1.1 / 2.2.2.2 / 3.3.3.3
-   iBGP AS 65000 full mesh between Loopback0 · Loopback200 10.255.x.x advertised only via BGP
-```
+<p align="center">
+  <img src="docs/topologyimages/topology.png" alt="Topology: Catalyst 8000v (IOS XE), XRv9000 (IOS XR) and Nexus 9000v-lite (NX-OS) in a triangle with OSPF and iBGP" width="800">
+</p>
 
 > **About this project.** I built this lab while learning network automation from scratch. I don't
 > have experience in a real-world network automation job, so treat it as an educational lab, not a
