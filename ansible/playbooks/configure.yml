@@ -46,7 +46,7 @@
       when: ansible_network_os == 'cisco.ios.ios'
       cisco.ios.ios_config:
         src: "{{ playbook_dir }}/../templates/day1/iosxe.j2"
-        save_when: modified
+        save_when: changed
 
     - name: IOS XR - addressing + OSPF (single atomic commit)
       when: ansible_network_os == 'cisco.iosxr.iosxr'
@@ -58,4 +58,4 @@
       when: ansible_network_os == 'cisco.nxos.nxos'
       cisco.nxos.nxos_config:
         src: "{{ playbook_dir }}/../templates/day1/nxos.j2"
-        save_when: modified
+        save_when: changed

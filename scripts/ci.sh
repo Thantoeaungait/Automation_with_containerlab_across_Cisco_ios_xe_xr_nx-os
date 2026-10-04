@@ -35,7 +35,11 @@ stage "wait for nodes";    make wait
 stage "bootstrap (day-0)"; make bootstrap
 stage "configure (day-1)"; make configure
 stage "validate baseline"; make validate
+stage "validate BGP";      make validate-bgp
 stage "apply change";      make change
 stage "validate change";   make validate-change
+stage "prune change";      make prune
+stage "back to baseline";  make validate
+stage "drift (SoT)";       make drift-check
 stage "backup + audit";    make audit
 stage "model-driven APIs"; make apis

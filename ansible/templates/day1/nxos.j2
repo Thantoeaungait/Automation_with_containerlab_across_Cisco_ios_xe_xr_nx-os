@@ -5,7 +5,9 @@ router ospf {{ ospf.process_id }}
 {% for lo in dev.loopbacks + extra_loopbacks %}
 interface {{ lo.name }}
   ip address {{ lo.ipv4 }}
+{% if lo.ospf | default(true) %}
   ip router ospf {{ ospf.process_id }} area {{ ospf.area_dotted }}
+{% endif %}
 {% endfor %}
 {% for intf in dev.interfaces %}
 interface {{ intf.name }}
@@ -13,3 +15,18 @@ interface {{ intf.name }}
   ip ospf network point-to-point
   ip router ospf {{ ospf.process_id }} area {{ ospf.area_dotted }}
 {% endfor %}
+{% if bgp is defined %}
+feature bgp
+router bgp {{ bgp.asn }}
+  router-id {{ dev.router_id }}
+  address-family ipv4 unicast
+{% for net in dev.bgp_networks | default([]) %}
+    network {{ net }}
+{% endfor %}
+{% for name, peer in devices.items() if name != inventory_hostname %}
+  neighbor {{ peer.router_id }}
+    remote-as {{ bgp.asn }}
+    update-source loopback0
+    address-family ipv4 unicast
+{% endfor %}
+{% endif %}

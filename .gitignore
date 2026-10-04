@@ -25,3 +25,6 @@ lab.env
 *.tar.gz
 images/
 *.log
+
+# drift baseline (generated per deployment)
+golden/

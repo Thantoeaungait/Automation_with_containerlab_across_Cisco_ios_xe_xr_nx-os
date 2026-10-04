@@ -35,6 +35,17 @@ report "changed" forever. Interface admin state therefore uses resource modules 
 templates render lines exactly as each OS displays them (netmasks on IOS XE/XR, prefix length + dotted
 area on NX-OS).
 
+**Adding vs removing.** Ansible's `*_config` modules and `state: merged` only add configuration, so
+deleting something from the SoT leaves it on the device. `state: overridden` would remove anything
+undeclared, but applied to L3 interfaces it would also wipe the management interfaces (Gi1, MgmtEth,
+mgmt0) and cut off access. `prune.yml` takes the guarded route instead: it gathers interfaces, removes
+only loopbacks missing from the SoT, and never touches Loopback0.
+
+**Two kinds of drift detection.** `make drift-check` asks "would applying the SoT change anything?" and
+only sees lines the templates manage. `make drift` compares the whole running-config with a saved
+baseline and sees everything, including manual changes the automation doesn't own. Both depend on
+idempotency: a task that always reports `changed` makes every drift check a false positive.
+
 **Readiness by polling.** vrnetlab VMs boot in 5–25 minutes depending on host and image. `wait_ready.py`
 first checks for a real `SSH-` banner (cheap, no auth), then pauses briefly (IOS XR rate-limits rapid
 connections from one source) before attempting a login.

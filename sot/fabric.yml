@@ -1,11 +1,14 @@
 ---
 # Single source of truth (intent).
 #   Ansible renders configuration from it.
-#   validation/validate.py derives expected state (OSPF peers, loopback reachability) from it.
+#   validation/validate.py and validate_bgp.py derive the expected state from it.
 ospf:
   process_id: 1
   area: 0
   area_dotted: "0.0.0.0"   # NX-OS renders areas in dotted form
+
+bgp:
+  asn: 65000               # iBGP full mesh between Loopback0 addresses
 
 devices:
   xe1:
@@ -13,6 +16,8 @@ devices:
     router_id: 1.1.1.1
     loopbacks:
       - { name: Loopback0, ipv4: 1.1.1.1/32 }
+      - { name: Loopback200, ipv4: 10.255.1.1/32, ospf: false }   # reachable only via BGP
+    bgp_networks: [10.255.1.1/32]
     interfaces:
       - { name: GigabitEthernet2, ipv4: 10.0.12.1/30, peer: xr1 }
       - { name: GigabitEthernet3, ipv4: 10.0.13.1/30, peer: nx1 }
@@ -22,6 +27,8 @@ devices:
     router_id: 2.2.2.2
     loopbacks:
       - { name: Loopback0, ipv4: 2.2.2.2/32 }
+      - { name: Loopback200, ipv4: 10.255.2.2/32, ospf: false }
+    bgp_networks: [10.255.2.2/32]
     interfaces:
       - { name: GigabitEthernet0/0/0/0, ipv4: 10.0.12.2/30, peer: xe1 }
       - { name: GigabitEthernet0/0/0/1, ipv4: 10.0.23.1/30, peer: nx1 }
@@ -31,6 +38,8 @@ devices:
     router_id: 3.3.3.3
     loopbacks:
       - { name: loopback0, ipv4: 3.3.3.3/32 }
+      - { name: loopback200, ipv4: 10.255.3.3/32, ospf: false }
+    bgp_networks: [10.255.3.3/32]
     interfaces:
       - { name: Ethernet1/1, ipv4: 10.0.23.2/30, peer: xr1 }
       - { name: Ethernet1/2, ipv4: 10.0.13.2/30, peer: xe1 }

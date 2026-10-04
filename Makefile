@@ -24,7 +24,7 @@ export ANSIBLE_CONFIG := $(CURDIR)/ansible.cfg
 export PATH := $(CURDIR)/$(VENV)/bin:$(PATH)
 
 .DEFAULT_GOAL := help
-.PHONY: help deps env lint render deploy wait bootstrap configure dry-run validate change validate-change \
+.PHONY: help deps env lint render validate-bgp prune-check prune golden drift drift-check deploy wait bootstrap configure dry-run validate change validate-change \
 	    audit netconf restconf gnmi apis inspect graph ssh-xe ssh-xr ssh-nx destroy ci clean
 
 help: ## List targets
@@ -71,6 +71,26 @@ change: ## Apply change set $(CHANGE)
 
 validate-change: ## pyATS validation including change set
 	$(PY) validation/validate.py --label change --change $(CHANGE)
+
+validate-bgp: ## pyATS: BGP sessions + BGP-advertised prefixes
+	$(PY) validation/validate_bgp.py
+
+prune-check: ## Show loopbacks not in the SoT that prune would remove (KEEP_CHANGE=1 keeps $(CHANGE))
+	$(PLAYBOOK) ansible/playbooks/prune.yml --check --diff $(if $(KEEP_CHANGE),-e @$(CHANGE))
+
+prune: ## Remove loopbacks not declared in the SoT (KEEP_CHANGE=1 keeps $(CHANGE))
+	$(PLAYBOOK) ansible/playbooks/prune.yml $(if $(KEEP_CHANGE),-e @$(CHANGE))
+
+golden: ## Save current running-configs as the golden baseline (golden/)
+	$(PY) nr/drift.py --save
+
+drift: ## Compare running-configs with the golden baseline
+	$(PY) nr/drift.py
+
+drift-check: ## Drift between SoT and devices (Ansible check mode)
+	@out=$$($(PLAYBOOK) ansible/playbooks/configure.yml --check --diff 2>&1); echo "$$out"; \
+	if echo "$$out" | grep -Eq 'changed=[1-9]'; then echo ">>> DRIFT: devices differ from SoT"; exit 1; \
+	else echo ">>> No drift from SoT"; fi
 
 audit: ## Nornir: backup configs + compliance audit
 	$(PY) nr/backup_and_audit.py
