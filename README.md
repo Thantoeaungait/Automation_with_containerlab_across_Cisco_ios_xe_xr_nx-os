@@ -63,6 +63,18 @@ validate → change → validate → prune → drift check → destroy** — run
 | Nexus 9000v-lite (NX-OS) | 9500v-lite 10.5.5.M — `vrnetlab/cisco_n9kv:9500-lite-10.5.5.M` |
 | Python (venv) | 3.12 via uv |
 
+**Community-tested** — reproduced independently by [Jeleel Muibi]
+on a fresh Proxmox host (8 vCPU, 32 GB RAM, 80 GB disk), commit `133f875`:
+
+| Component | Version |
+|---|---|
+| Catalyst 8000v (IOS XE) | 17.16.01a |
+| XRv9000 (IOS XR) | 24.3.1 |
+| Nexus 9500v (NX-OS) | 10.4.2.F |
+
+Result: baseline validation 12/12, change validation 18/18, NETCONF on all three platforms, gNMI on
+NX-OS. The two issues found (NX-OS RESTCONF XML response, XRv9K image-size warning) are fixed.
+
 Other versions will probably work; if your image tags differ, set them in `lab.env` (see below).
 
 ## Requirements

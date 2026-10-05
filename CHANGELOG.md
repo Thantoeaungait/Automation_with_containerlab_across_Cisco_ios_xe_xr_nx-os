@@ -54,6 +54,8 @@ Both found by Jeleel Muibi while reproducing the lab on a fresh Proxmox host.
   drift false positives, yamllint warnings vs errors.
 - README: topology diagram and section on how it is maintained; interface naming note.
 - TROUBLESHOOTING: topology and diagram issues (interface names, SVG export without text, image paths).
+- README: community-tested versions (C8000v 17.16.01a, XRv9000 24.3.1, N9500v 10.4.2.F on Proxmox),
+  reproduced by Jeleel Muibi.
 
 ## [1.1.0] - 2026-10-03
 
