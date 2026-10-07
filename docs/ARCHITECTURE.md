@@ -3,15 +3,19 @@
 ## Flow
 
 ```
-            sot/fabric.yml  +  sot/changes/*.yml
-                   │                    │
-      ┌────────────┴───────┐   ┌────────┴──────────┐
-      ▼                    │   ▼                   │
- Ansible templates         │  validation/validate.py (pyATS)
- (render + push)           │   expected state derived from SoT
-      │                    │
-      ▼                    ▼
- xe1 ── xr1 ── nx1   ◄── Nornir (readiness, backup, audit)
+   secrets/vault.yml (encrypted)      sot/fabric.yml  +  sot/changes/*.yml
+              │                              │
+              └──────────► lab/sot.py ◄──────┤
+                 ansible/inventory/sot.py    ├──► topology/lab.clab.yml (make topology)
+                              │              └──► tac_plus.cfg (make tacacs-config)
+      ┌───────────────────────┼─────────────────────────┐
+      ▼                       ▼                         ▼
+ Ansible templates      validation/ (pyATS)        Nornir (readiness,
+ (render + push,        expected state from SoT,   backup, audit, drift,
+  checkpoint/rollback)  failover test              TACACS+ test)
+      │                       │                         │
+      ▼                       ▼                         ▼
+ xe1 ── xr1 ── nx1  ──── AAA ────►  tacacs (tac_plus container)
       ▲
       └── NETCONF / RESTCONF / gNMI smoke tests (api/)
 ```
@@ -22,6 +26,23 @@
 so adding a link or node automatically updates the expected OSPF neighbor counts and reachability matrix.
 The alternative — hard-coding expectations in tests — drifts from reality the first time someone edits
 the design.
+
+**Secrets out of the SoT.** The SoT is safe to review and publish; it names a credential set per
+platform, and the values come from the encrypted vault. `lab/sot.py` decrypts with the same password
+file Ansible uses, so every tool sees the same credentials and nothing else stores them.
+
+**Generated, not duplicated.** The containerlab topology, the Ansible inventory, the Nornir inventory,
+the pyATS testbed and the TACACS+ server config are all derived from the SoT. `make lint` fails if the
+generated topology is out of date, so a device can't exist in one place and not another.
+
+**AAA that can't lock you out.** Devices authenticate against TACACS+ but fall back to local accounts
+when the server is unreachable, and the console never uses TACACS+. The automation accounts exist on
+both, so the pipeline keeps working either way. The proof is a login with an account that exists only
+on the server.
+
+**Reversible changes.** `safe-change` takes a per-platform checkpoint (IOS XE file + `configure
+replace`, NX-OS checkpoint, IOS XR commit ID), applies the change, validates, and rolls back on any
+failure. Validation decides, not the operator.
 
 **Change sets as overlays.** `-e @sot/changes/x.yml` layers extra intent on top of the baseline. A merge
 request can carry a change file, and CI validates exactly that delta. Promotion = merging the overlay into

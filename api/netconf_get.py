@@ -20,7 +20,6 @@ OC_NS = "http://openconfig.net/yang/interfaces"
 OC_FILTER = f'<interfaces xmlns="{OC_NS}"><interface><name/><state><oper-status/></state></interface></interfaces>'
 NX_NS = "http://cisco.com/ns/yang/cisco-nx-os-device"
 NX_FILTER = f'<System xmlns="{NX_NS}"><name/></System>'
-DEVICE_PARAMS = {"iosxe": "iosxe", "iosxr": "iosxr", "nxos": "nexus"}
 
 
 def connect(d: dict, retries: int = 10, delay: int = 15):
@@ -30,7 +29,7 @@ def connect(d: dict, retries: int = 10, delay: int = 15):
             return manager.connect(
                 host=d["host"], port=d.get("netconf_port", 830), username=d["username"], password=d["password"],
                 hostkey_verify=False, look_for_keys=False, allow_agent=False,
-                device_params={"name": DEVICE_PARAMS[d["os"]]}, timeout=60,
+                device_params={"name": d["ncclient"]}, timeout=60,
             )
         except Exception as exc:  # agent may still be starting right after bootstrap
             last = exc

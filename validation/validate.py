@@ -23,6 +23,8 @@ from genie.metaparser.util.exceptions import SchemaEmptyParserError
 from genie.testbed import load
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from lab import sot  # noqa: E402  single source of truth (devices + vault credentials)
 
 OSPF_NEIGHBOR_CMD = {
     "iosxe": "show ip ospf neighbor",
@@ -128,7 +130,7 @@ def write_junit(cases: list[Case], path: Path, label: str) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--testbed", type=Path, default=ROOT / "validation" / "testbed.yaml")
+    ap.add_argument("--testbed", type=Path, help="optional pyATS testbed file (default: built from the SoT)")
     ap.add_argument("--change", type=Path, help="change set YAML whose loopbacks must also be reachable")
     ap.add_argument("--label", default="baseline")
     ap.add_argument("--converge-timeout", type=int, default=240)
@@ -139,7 +141,7 @@ def main() -> int:
     logging.getLogger("genie").setLevel(logging.WARNING)
 
     devices, exp_neighbors, exp_loopbacks, src_ip = load_intent(args.change)
-    tb = load(str(args.testbed))
+    tb = load(str(args.testbed)) if args.testbed else load(sot.pyats_testbed())
     cases: list[Case] = []
 
     conns = {}

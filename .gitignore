@@ -28,3 +28,10 @@ images/
 
 # drift baseline (generated per deployment)
 golden/
+
+# secrets (never commit): encrypted vault is per user, PKI keys, rendered TACACS+ config
+secrets/vault.yml
+secrets/pki/
+topology/configs/tac_plus.cfg
+validation/testbed.generated.yaml
+topology/configs/telemetry/

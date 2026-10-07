@@ -1,12 +1,14 @@
 # Contributing
 
-Thanks for helping improve this lab! It's a learning project, so questions, corrections and
-suggestions from experienced engineers are especially welcome.
+Thanks for helping improve this lab! It practises production automation workflows on virtual
+routers (see [docs/PRODUCTION.md](docs/PRODUCTION.md)); questions, corrections and suggestions from
+experienced engineers are especially welcome.
 
 ## Ground rules
 
 - **Never commit Cisco images, license files, or real credentials.** Pull requests containing them
-  will be closed and the history cleaned.
+  will be closed and the history cleaned. Secrets belong in `secrets/vault.yml` (git-ignored);
+  new secret fields go into `secrets/vault.example.yml` as `CHANGE_ME_*` placeholders.
 - Keep the source of truth authoritative: new checks should derive expectations from `sot/`, not hard-code them.
 - One logical change per pull request.
 
@@ -16,6 +18,7 @@ suggestions from experienced engineers are especially welcome.
 ./scripts/00-host-setup.sh   # once
 make deps
 cp lab.env.example lab.env   # only if your image tags differ
+make vault-init              # vault password + encrypted secrets
 ```
 
 ## Before opening a pull request
@@ -28,7 +31,7 @@ make render                  # look at the generated configs
 If you have a lab host, also run the stages your change touches, ideally the full pipeline:
 
 ```bash
-KEEP_LAB=1 ./scripts/ci.sh
+TACACS=1 FAILOVER=1 KEEP_LAB=1 make ci
 ```
 
 Mention the image versions (`make env`, `docker images`) and containerlab version in the pull request.
@@ -45,9 +48,9 @@ Mention the image versions (`make env`, `docker images`) and containerlab versio
 
 ## Adding a node or platform
 
-1. Add the node to `topology/lab.clab.yml` with a fixed `mgmt-ipv4`, using the device's own interface names in `links:`.
-2. Add it to `sot/fabric.yml`.
-3. Add inventory entries: `ansible/inventory`, `nr/inventory`, `validation/testbed.yaml`, `api/lab_devices.py`.
+1. Add the device to `sot/fabric.yml` (`devices`, plus a `platforms` entry and vault `credentials` if it is a new platform).
+2. Run `make topology` to regenerate `topology/lab.clab.yml`. Ansible, Nornir, pyATS and the API scripts pick it up automatically.
+3. Nothing else holds an inventory: there are no per-tool host files to update.
 4. Add templates under `ansible/templates/{bootstrap,day1}/` and tasks in the playbooks.
 5. Add OSPF/ping command mappings in `validation/validate.py` and audit rules in `nr/backup_and_audit.py`.
 6. Document image preparation in `docs/IMAGES.md`.

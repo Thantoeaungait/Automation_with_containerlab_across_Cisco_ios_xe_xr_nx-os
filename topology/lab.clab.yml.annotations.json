@@ -288,6 +288,13 @@
         "y": 420
       },
       "iconColor": "#ea580c"
+    },
+    {
+      "id": "tacacs",
+      "position": {
+        "x": 500,
+        "y": 320
+      }
     }
   ],
   "edgeAnnotations": [],
