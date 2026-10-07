@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Render day-1 templates from the SoT without devices or Ansible collections.
 
-Used by CI lint and handy locally:  python scripts/render_templates.py [--change sot/changes/loopback100.yml]
+Used by make lint / make render, and by scripts/batfish_check.py:
+  python scripts/render_templates.py [--change sot/changes/loopback100.yml]
 """
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 
@@ -18,25 +21,33 @@ def ipaddr(value: str, query: str) -> str:
     return {"address": str(net.ip), "netmask": str(net.netmask)}[query]
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--change", type=Path)
-    args = ap.parse_args()
-
+def render_all(change: Path | None = None) -> dict[str, str]:
+    """Rendered day-1 config per device (same templates and variables as Ansible)."""
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(ROOT / "ansible/templates/day1"),
         trim_blocks=True, undefined=jinja2.StrictUndefined,
     )
     env.filters["ansible.utils.ipaddr"] = ipaddr
-    sot = yaml.safe_load((ROOT / "sot/fabric.yml").read_text())
-    changes = yaml.safe_load(args.change.read_text())["changes"] if args.change else {}
-
-    for host, dev in sot["devices"].items():
-        print(f"!---------------- {host} ({dev['platform']}) ----------------")
-        print(env.get_template(f"{dev['platform']}.j2").render(
-            inventory_hostname=host, dev=dev, ospf=sot["ospf"], devices=sot["devices"], **({"bgp": sot["bgp"]} if "bgp" in sot else {}),
+    fab = yaml.safe_load((ROOT / "sot/fabric.yml").read_text())
+    changes = yaml.safe_load(change.read_text())["changes"] if change else {}
+    extra = {"bgp": fab["bgp"]} if "bgp" in fab else {}
+    return {
+        host: env.get_template(f"{dev['platform']}.j2").render(
+            inventory_hostname=host, dev=dev, ospf=fab["ospf"], devices=fab["devices"], **extra,
             extra_loopbacks=changes.get(host, {}).get("loopbacks", []),
-        ))
+        )
+        for host, dev in fab["devices"].items()
+    }
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--change", type=Path)
+    args = ap.parse_args()
+    fab = yaml.safe_load((ROOT / "sot/fabric.yml").read_text())
+    for host, cfg in render_all(args.change).items():
+        print(f"!---------------- {host} ({fab['devices'][host]['platform']}) ----------------")
+        print(cfg)
 
 
 if __name__ == "__main__":

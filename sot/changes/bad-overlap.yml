@@ -1,0 +1,8 @@
+---
+# Deliberately broken change for `make safe-change CHANGE=sot/changes/bad-overlap.yml`:
+# Loopback101 on xe1 overlaps the xe1-xr1 link subnet, so IOS XE rejects it and the
+# safe-change target rolls every device back to the checkpoint.
+changes:
+  xe1:
+    loopbacks:
+      - { name: Loopback101, ipv4: 10.0.12.1/32 }

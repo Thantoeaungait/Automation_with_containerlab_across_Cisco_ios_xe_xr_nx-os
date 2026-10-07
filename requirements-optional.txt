@@ -1,0 +1,3 @@
+# Optional tools for docs/PRODUCTION-PHASE2.md:  .venv/bin/pip install -r requirements-optional.txt
+pybatfish>=2024.7
+pynetbox>=7.4

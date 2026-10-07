@@ -1,0 +1,9 @@
+feature tacacs+
+tacacs-server host {{ tacacs_ip }} key 0 {{ tacacs.key }}
+aaa group server tacacs+ MGMT-TACACS
+  server {{ tacacs_ip }}
+  use-vrf management
+  source-interface mgmt0
+aaa authentication login console local
+aaa authentication login default group MGMT-TACACS
+aaa accounting default group MGMT-TACACS
