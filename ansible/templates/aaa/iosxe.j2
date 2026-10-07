@@ -1,0 +1,17 @@
+{# Group name must not be a prefix of a keyword: IOS XE reads "group TAC" as "group tacacs+" (global list, no VRF). #}
+aaa new-model
+tacacs server TAC1
+ address ipv4 {{ tacacs_ip }}
+ key 0 {{ tacacs.key }}
+aaa group server tacacs+ MGMT-TACACS
+ server name TAC1
+{% if mgmt_vrf %}
+ ip vrf forwarding {{ mgmt_vrf }}
+{% endif %}
+ ip tacacs source-interface GigabitEthernet1
+aaa authentication login CONSOLE local
+aaa authentication login default group MGMT-TACACS local
+aaa authorization exec default group MGMT-TACACS local
+aaa accounting exec default start-stop group MGMT-TACACS
+line con 0
+ login authentication CONSOLE

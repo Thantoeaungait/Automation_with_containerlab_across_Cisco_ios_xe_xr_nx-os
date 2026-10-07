@@ -47,6 +47,12 @@ Search this page for the exact error text you see.
 | `sudo: preserving the entire environment is not supported, '-E' is ignored` | Ubuntu 26.04 uses sudo-rs | The Makefile uses `sudo env ...`; best: `sudo usermod -aG clab_admins $USER` and log in again |
 | `ERRO container "clab-mvauto-xe1" exited; container output: ...` during deploy | `--reconfigure` destroys the previous lab; that old container had already stopped | Harmless if the new deploy continues. If nodes keep exiting: `docker ps -a` (`Exited (137)` = killed) and `sudo dmesg \| grep -i oom` — usually not enough RAM |
 
+## C8000v sizing
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| C8000v 17.16 never becomes ready; QFP process exits with `rc 139` | Too little memory/CPU for this release under nested virtualization | `C8KV_MEMORY ?= 8192` and `C8KV_SMP ?= 2` in `lab.env` (reported by Jeleel Muibi) |
+
 ## Wait (`make wait`)
 
 | Symptom | Cause | Fix |
@@ -54,7 +60,7 @@ Search this page for the exact error text you see.
 | `booting (no SSH banner)` for several minutes | VMs still booting | Normal; XRv9000 takes 10–20 min |
 | `sshd up, login not ready: ['xr1(NetmikoAuthenticationException)']` | XRv9000 starts sshd before the `clab` user exists | Normal while booting |
 | xr1 never becomes ready; XR log shows `Incoming SSH session rate limit exceeded` | IOS XR rate-limits SSH sessions from one source | Fixed by `topology/configs/xr1.cfg` (`ssh server rate-limit 600`) and a pause in `wait_ready.py`. On a running node: `conf t` → `ssh server rate-limit 600` → `commit` |
-| A polling round seems frozen | Netmiko waits for its banner timeout | Normal; `banner_timeout` is 15 s in `nr/inventory/defaults.yaml` |
+| A polling round seems frozen | Netmiko waits for its banner timeout | Normal; `banner_timeout` is 15 s in `nr/common.py` (SotInventory) |
 
 ## Bootstrap (`make bootstrap`)
 
@@ -145,6 +151,19 @@ If you get gNMI working on XRv9000 under vrnetlab, a pull request is very welcom
 | Text invisible in an exported SVG | Transparent background + dark text viewed on a dark background | Export with a custom background colour |
 | Image not shown on GitHub | Wrong path or case (`Topology.png` ≠ `topology.png`) | Check `ls docs/topologyimages/` and the `src` in README |
 | A new `docs/images/` folder is not committed | `.gitignore` ignores every `images/` folder (to keep Cisco images out of Git) | The diagram lives in `docs/topologyimages/` for that reason |
+
+## Vault, SoT and TACACS+
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Vault password file not found` / `secrets/vault.yml not found` | Vault not created on this machine (it is git-ignored) | `make vault-init` |
+| `Decryption failed` | Wrong password file (another machine, regenerated) | Restore `~/.config/mvauto/vault-pass` from your backup; otherwise recreate the vault |
+| `topology/lab.clab.yml is out of date` | SoT changed without regenerating | `make topology` |
+| `tacacs` exits: `Expected 'alias', 'id', ... but got 'key'` | Config in classic Shrubbery syntax; the image runs Marc Huber's tac_plus | Fixed in `render_tacacs.py` (spawnd + tac_plus blocks); check with `make tacacs-check` |
+| Deploy fails with `context canceled` on xe1/xr1 after a container error | One node (e.g. `tacacs`) failed, so containerlab cancelled the rest | Fix the failing node first; for TACACS+: `make tacacs-check` |
+| `tacacs` container restarting | Image or config path differs from `lfkeitel/tacacs_plus` | `docker logs clab-mvauto-tacacs`; adjust `services.tacacs.image` / bind path |
+| `make tacacs-test` fails, local accounts work | Device can't reach the server or the key differs | `ping 172.30.30.20` from the device (in its management VRF); compare keys with `make vault-view` |
+| Locked out after `make tacacs` | Server reachable but rejecting the account | Console (`telnet <mgmt-ip> 5000`) uses local login only; revert AAA to local there |
 
 ## Lint (`make lint`)
 

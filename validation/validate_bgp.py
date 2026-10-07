@@ -14,7 +14,7 @@ import time
 import yaml
 from genie.testbed import load
 
-from validate import ROOT, Case, addr, ping_cmd, ping_success_pct, write_junit
+from validate import ROOT, Case, addr, ping_cmd, ping_success_pct, sot, write_junit
 
 BGP_NEIGHBORS_CMD = {
     "iosxe": "show ip bgp neighbors",
@@ -35,7 +35,7 @@ def main() -> int:
         return 0
     devices = fabric["devices"]
     expected = len(devices) - 1
-    tb = load(str(ROOT / "validation" / "testbed.yaml"))
+    tb = load(sot.pyats_testbed())
 
     conns = {}
     for name in devices:

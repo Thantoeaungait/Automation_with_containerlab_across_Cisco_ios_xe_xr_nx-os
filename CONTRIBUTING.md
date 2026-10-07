@@ -45,9 +45,9 @@ Mention the image versions (`make env`, `docker images`) and containerlab versio
 
 ## Adding a node or platform
 
-1. Add the node to `topology/lab.clab.yml` with a fixed `mgmt-ipv4`, using the device's own interface names in `links:`.
-2. Add it to `sot/fabric.yml`.
-3. Add inventory entries: `ansible/inventory`, `nr/inventory`, `validation/testbed.yaml`, `api/lab_devices.py`.
+1. Add the device to `sot/fabric.yml` (`devices`, plus a `platforms` entry and vault `credentials` if it is a new platform).
+2. Run `make topology` to regenerate `topology/lab.clab.yml`. Ansible, Nornir, pyATS and the API scripts pick it up automatically.
+3. Nothing else holds an inventory: there are no per-tool host files to update.
 4. Add templates under `ansible/templates/{bootstrap,day1}/` and tasks in the playbooks.
 5. Add OSPF/ping command mappings in `validation/validate.py` and audit rules in `nr/backup_and_audit.py`.
 6. Document image preparation in `docs/IMAGES.md`.

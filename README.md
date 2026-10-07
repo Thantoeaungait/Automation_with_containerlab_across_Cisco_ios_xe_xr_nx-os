@@ -63,18 +63,6 @@ validate → change → validate → prune → drift check → destroy** — run
 | Nexus 9000v-lite (NX-OS) | 9500v-lite 10.5.5.M — `vrnetlab/cisco_n9kv:9500-lite-10.5.5.M` |
 | Python (venv) | 3.12 via uv |
 
-**Community-tested** — reproduced independently by [Jeleel Muibi]
-on a fresh Proxmox host (8 vCPU, 32 GB RAM, 80 GB disk), commit `133f875`:
-
-| Component | Version |
-|---|---|
-| Catalyst 8000v (IOS XE) | 17.16.01a |
-| XRv9000 (IOS XR) | 24.3.1 |
-| Nexus 9500v (NX-OS) | 10.4.2.F |
-
-Result: baseline validation 12/12, change validation 18/18, NETCONF on all three platforms, gNMI on
-NX-OS. The two issues found (NX-OS RESTCONF XML response, XRv9K image-size warning) are fixed.
-
 Other versions will probably work; if your image tags differ, set them in `lab.env` (see below).
 
 ## Requirements
@@ -108,7 +96,10 @@ make env                       # shows what containerlab will receive
 # 4. Python toolchain (Python 3.12 venv + Ansible collections)
 make deps
 
-# 5. Run the whole pipeline
+# 5. Secrets: vault password (openssl rand -base64 32) + encrypted credentials
+make vault-init
+
+# 6. Run the whole pipeline
 make ci
 ```
 
@@ -143,6 +134,7 @@ To keep the lab when the pipeline fails: `KEEP_LAB=1 ./scripts/ci.sh`.
 | `drift-check` | Ansible | Check mode: fails if any device differs from what the SoT would render |
 | `golden` / `drift` | Nornir | Save running-configs as a baseline / diff them later → `reports/drift-<host>.diff` |
 | `audit` | Nornir | Config backups to `backups/` + compliance rules → `reports/audit.json` |
+| (`ci.sh` exit) | Python | `reports/run-manifest.json`: commit, image IDs, host, per-stage result and duration, report checksums |
 | `apis` | ncclient · requests · gnmic | NETCONF, RESTCONF and gNMI smoke tests |
 | `destroy` | containerlab | Tears the lab down |
 
@@ -163,6 +155,19 @@ Links in `topology/lab.clab.yml` use the interface names you see on each device 
 `Ethernet1/1`), so the topology file, the SoT and `show` output all match.
 
 Default credentials (containerlab defaults): xe1 / nx1 `admin` / `admin`, xr1 `clab` / `clab@123`.
+
+## Secrets, single source of truth and AAA
+
+- **Vault:** all credentials, the TACACS+ key and the PKCS#12 password live in `secrets/vault.yml`,
+  encrypted with ansible-vault (`make vault-init`, `make vault-edit`). Nothing secret is in Git.
+- **One SoT:** `sot/fabric.yml` describes devices, platforms, management IPs and services. The
+  containerlab topology is generated from it (`make topology`), and Ansible, Nornir, pyATS and the API
+  scripts all read it through `lab/sot.py` / `ansible/inventory/sot.py`.
+- **TACACS+:** a tac_plus container in the lab; `make tacacs` points device AAA at it with local
+  fallback and a local-only console; `make tacacs-test` proves it with a TACACS-only account.
+- **TLS:** `make pki` creates a lab CA and device certificates.
+
+Details: [docs/PRODUCTION-PHASE1.md](docs/PRODUCTION-PHASE1.md).
 
 ## Removing configuration and detecting drift
 
@@ -210,10 +215,12 @@ To change the permanent design (links, addressing, nodes), edit `sot/fabric.yml`
 ```
 .
 ├── topology/            lab.clab.yml (Cisco interface names) · configs/xr1.cfg · *.annotations.json (TopoViewer diagram)
-├── sot/                 fabric.yml (intent) · changes/*.yml (change sets)
+├── sot/                 fabric.yml (single source of truth) · changes/*.yml (change sets)
+├── lab/                 sot.py: loads the SoT + vault for every Python tool
+├── secrets/             vault.example.yml (vault.yml and pki/ are created locally, git-ignored)
 ├── ansible/             inventory · playbooks (bootstrap, configure, prune) · templates (bootstrap, day1)
 ├── nr/                  Nornir: wait_ready.py · backup_and_audit.py · drift.py · inventory
-├── validation/          pyATS testbed.yaml · validate.py · validate_bgp.py (intent-derived checks, JUnit)
+├── validation/          validate.py · validate_bgp.py (testbed built from the SoT; intent-derived checks, JUnit)
 ├── api/                 netconf_get.py · restconf_get.py · gnmi_check.sh
 ├── scripts/             00-host-setup.sh · 01-build-images.sh · ci.sh · render_templates.py
 ├── docs/                IMAGES.md · ARCHITECTURE.md · TROUBLESHOOTING.md · topologyimages/topology.png
@@ -229,6 +236,7 @@ All optional. Set them in `lab.env` or on the command line (`make ci GNMI_SKIP=n
 | Variable | Default | Purpose |
 |---|---|---|
 | `C8KV_IMAGE`, `XRV9K_IMAGE`, `N9KV_IMAGE` | tested versions above | Local image tags |
+| `C8KV_MEMORY`, `C8KV_SMP` | `4096`, `1` | C8000v sizing (17.16 nested: `8192`, `2`) |
 | `N9KV_MEMORY`, `N9KV_SMP` | `6144`, `2` | N9Kv sizing (full image: `10240`, `4`) |
 | `GNMI_SKIP` | `xe1 xr1` | Nodes excluded from the gNMI test; `none` tests all |
 | `TOPO` | `topology/lab.clab.yml` | Topology file |

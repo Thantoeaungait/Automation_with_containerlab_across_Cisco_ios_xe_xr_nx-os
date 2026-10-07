@@ -1,5 +1,6 @@
 extends: relaxed
 ignore: |
+  ansible/inventory/group_vars/all/vault.yml
   ansible/collections/
   .venv/
   topology/clab-*/

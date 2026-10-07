@@ -5,6 +5,37 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+- Encrypted secrets: `make vault-init` creates the vault password (`openssl rand -base64 32`, outside
+  the repo) and `secrets/vault.yml` with all device credentials, the TACACS+ key and the PKCS#12 password.
+- Single source of truth: `sot/fabric.yml` now holds platforms, management IPs and services.
+  `lab/sot.py` loads it (with the vault) for Nornir, pyATS and the API scripts; Ansible uses the
+  dynamic inventory `ansible/inventory/sot.py`; `make topology` generates `topology/lab.clab.yml`.
+- TACACS+ server container in the lab, `make tacacs` (AAA with local fallback and local-only console)
+  and `make tacacs-test`.
+- Lab PKI: `make pki` creates a CA and device certificates; clients verify against the CA once
+  `pki.verify_with_lab_ca` is true.
+- Pre/post state snapshots: `make pre-check`, `make post-check`, `make state-diff` (genie learn/diff).
+- `docs/PRODUCTION-PHASE1.md`.
+- `reports/run-manifest.json` written by `scripts/ci.sh` on exit: repository commit (and dirty flag),
+  topology/SoT checksums, containerlab and image identities, host facts, per-stage result and
+  duration, report checksums. Identifies a run for comparison with a rerun on another host.
+- C8000v sizing via `C8KV_MEMORY` / `C8KV_SMP` (lab.env); C8000v 17.16 under nested virtualization
+  needs 8192 MB / 2 vCPU (reported by Jeleel Muibi).
+- `make tacacs-check`: validates the rendered TACACS+ config by starting the image briefly.
+
+### Changed (breaking)
+- Credentials are no longer in inventories; run `make vault-init` once before deploying.
+- Removed `ansible/inventory/hosts.yml`, per-platform group_vars, `nr/inventory/`, `validation/testbed.yaml`.
+- `topology/lab.clab.yml` is generated; edit `sot/fabric.yml` and run `make topology`.
+- The post-prune validation writes `reports/validation-after-prune.xml` instead of overwriting the
+  baseline report.
+
+### Fixed
+- TACACS+ config is rendered in Marc Huber's tac_plus syntax used by `lfkeitel/tacacs_plus`
+  (the container exited on the classic Shrubbery format).
+
+
 ### Fixed
 - `api/restconf_get.py` stopped the pipeline when NX-OS answered HTTP 200 with YANG XML instead of the
   requested JSON. Responses are now printed as JSON or XML based on the content type.
@@ -54,8 +85,6 @@ Both found by Jeleel Muibi while reproducing the lab on a fresh Proxmox host.
   drift false positives, yamllint warnings vs errors.
 - README: topology diagram and section on how it is maintained; interface naming note.
 - TROUBLESHOOTING: topology and diagram issues (interface names, SVG export without text, image paths).
-- README: community-tested versions (C8000v 17.16.01a, XRv9000 24.3.1, N9500v 10.4.2.F on Proxmox),
-  reproduced by Jeleel Muibi.
 
 ## [1.1.0] - 2026-10-03
 

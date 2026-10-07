@@ -1,0 +1,59 @@
+---
+# Point device AAA at the TACACS+ server from the SoT (services.tacacs), with local fallback.
+#
+# Safety first:
+#   * the console keeps a LOCAL-only login list, so `telnet <mgmt-ip> 5000` always works
+#   * when the TACACS+ server is unreachable, devices fall back to local accounts
+#   * the server knows the automation accounts too (scripts/render_tacacs.py), so Ansible,
+#     Nornir and pyATS keep working when the server IS reachable
+# Platforms are opt-in via services.tacacs.apply_to (IOS XR is left out by default).
+- name: Configure TACACS+ AAA
+  hosts: lab
+  gather_facts: false
+  vars_files:
+    - ../../sot/fabric.yml
+  vars:
+    tacacs_ip: "{{ services.tacacs.mgmt_ip }}"
+
+  tasks:
+    - name: IOS XE - find the management VRF (vrnetlab may use one)
+      when: platform in services.tacacs.apply_to and ansible_network_os == 'cisco.ios.ios'
+      cisco.ios.ios_command:
+        commands: show running-config interface GigabitEthernet1
+      register: xe_mgmt
+
+    - name: IOS XR - find the management VRF
+      when: platform in services.tacacs.apply_to and ansible_network_os == 'cisco.iosxr.iosxr'
+      cisco.iosxr.iosxr_command:
+        commands: show running-config interface MgmtEth0/RP0/CPU0/0
+      register: xr_mgmt
+
+    - name: Set management VRF fact
+      when: platform in services.tacacs.apply_to
+      ansible.builtin.set_fact:
+        mgmt_vrf: >-
+          {{ ((xe_mgmt.stdout | default([''])) + (xr_mgmt.stdout | default([''])))
+             | join('\n') | regex_search('vrf(?: forwarding)? (\S+)', '\1') | default([''], true) | first }}
+
+    - name: IOS XE - AAA via TACACS+
+      when: platform in services.tacacs.apply_to and ansible_network_os == 'cisco.ios.ios'
+      cisco.ios.ios_config:
+        src: "{{ playbook_dir }}/../templates/aaa/iosxe.j2"
+        save_when: changed
+
+    - name: NX-OS - AAA via TACACS+ (management VRF; falls back to local when unreachable)
+      when: platform in services.tacacs.apply_to and ansible_network_os == 'cisco.nxos.nxos'
+      cisco.nxos.nxos_config:
+        src: "{{ playbook_dir }}/../templates/aaa/nxos.j2"
+        save_when: changed
+
+    - name: IOS XR - AAA via TACACS+ (opt-in)
+      when: platform in services.tacacs.apply_to and ansible_network_os == 'cisco.iosxr.iosxr'
+      cisco.iosxr.iosxr_config:
+        src: "{{ playbook_dir }}/../templates/aaa/iosxr.j2"
+        comment: "aaa: tacacs+ with local fallback"
+
+    - name: Skipped platforms
+      when: platform not in services.tacacs.apply_to
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: TACACS+ not applied ({{ platform }} not in services.tacacs.apply_to)"
