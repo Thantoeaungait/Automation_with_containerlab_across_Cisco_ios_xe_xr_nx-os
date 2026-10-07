@@ -13,22 +13,24 @@ from xml.dom import minidom
 import requests
 import urllib3
 
-from lab_devices import DEVICES
+from lab_devices import CA_CERT, DEVICES
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 HEADERS = {"Accept": "application/yang-data+json", "Content-Type": "application/yang-data+json"}
 
-READS = {
-    "xe1": ["/restconf/data/Cisco-IOS-XE-native:native/hostname",
+VERIFY = str(CA_CERT) if CA_CERT else False   # verify against our CA once `make pki` + install ran
+
+READS = {  # per platform; IOS XR has no RESTCONF
+    "iosxe": ["/restconf/data/Cisco-IOS-XE-native:native/hostname",
             "/restconf/data/Cisco-IOS-XE-native:native/router/Cisco-IOS-XE-ospf:router-ospf"],
-    "nx1": ["/restconf/data/Cisco-NX-OS-device:System/name"],
+    "nxos": ["/restconf/data/Cisco-NX-OS-device:System/name"],
 }
 
 
 def get(session: requests.Session, url: str, retries: int = 6) -> requests.Response:
     for attempt in range(1, retries + 1):
         try:
-            r = session.get(url, headers=HEADERS, verify=False, timeout=30)
+            r = session.get(url, headers=HEADERS, verify=VERIFY, timeout=30)
             if r.status_code < 500:
                 return r
         except requests.RequestException as exc:
@@ -55,12 +57,14 @@ def render(r: requests.Response) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--set-description", help="PATCH xe1 Loopback0 description via RESTCONF")
+    ap.add_argument("--set-description", help="PATCH the IOS XE Loopback0 description via RESTCONF")
     args = ap.parse_args()
     failed = False
 
-    for name, paths in READS.items():
-        d = DEVICES[name]
+    for name, d in DEVICES.items():
+        paths = READS.get(d["os"])
+        if not paths:
+            continue
         s = requests.Session()
         s.auth = (d["username"], d["password"])
         print(f"=== {name} (https://{d['host']}) ===")
@@ -78,11 +82,11 @@ def main() -> int:
                 failed = True
 
     if args.set_description:
-        d = DEVICES["xe1"]
+        d = next(v for v in DEVICES.values() if v["os"] == "iosxe")
         url = f"https://{d['host']}/restconf/data/Cisco-IOS-XE-native:native/interface/Loopback=0"
         body = {"Cisco-IOS-XE-native:Loopback": {"name": 0, "description": args.set_description}}
         r = requests.patch(url, auth=(d["username"], d["password"]), headers=HEADERS,
-                           json=body, verify=False, timeout=30)
+                           json=body, verify=VERIFY, timeout=30)
         print(f"PATCH Loopback0 description -> {r.status_code}")
         failed |= not r.ok
 

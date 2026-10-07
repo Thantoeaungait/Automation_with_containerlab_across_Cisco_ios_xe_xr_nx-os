@@ -3,15 +3,71 @@
 All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [2.0.0] - 2026-10-07
+
+Production release: the lab is rebuilt around production automation practices (vault, single
+source of truth, central AAA, rollback, failure testing, approval-gated pipeline). Overview:
+`docs/PRODUCTION.md`. Reference run: `TACACS=1 FAILOVER=1 make ci`, all 16 stages passed.
+
+### Added
+- `docs/PRODUCTION.md`: approach to production — principles, coverage per practice, reference
+  pipeline run, gaps to close before real devices.
+- Encrypted secrets: `make vault-init` creates the vault password (`openssl rand -base64 32`, outside
+  the repo) and `secrets/vault.yml` with all device credentials, the TACACS+ key and the PKCS#12 password.
+- Single source of truth: `sot/fabric.yml` now holds platforms, management IPs and services.
+  `lab/sot.py` loads it (with the vault) for Nornir, pyATS and the API scripts; Ansible uses the
+  dynamic inventory `ansible/inventory/sot.py`; `make topology` generates `topology/lab.clab.yml`.
+- TACACS+ server container in the lab, `make tacacs` (AAA with local fallback and local-only console)
+  and `make tacacs-test`.
+- Lab PKI: `make pki` creates a CA and device certificates; clients verify against the CA once
+  `pki.verify_with_lab_ca` is true.
+- Pre/post state snapshots: `make pre-check`, `make post-check`, `make state-diff` (genie learn/diff).
+- `docs/PRODUCTION-PHASE1.md`.
+- `make tacacs-test` prints the server's access log (failed logins with source IP) and, for a device
+  that fails, its AAA config, `show tacacs` and a ping to the server in the management VRF (keys masked).
+- `reports/run-manifest.json` written by `scripts/ci.sh` on exit: repository commit (and dirty flag),
+  topology/SoT checksums, containerlab and image identities, host facts, per-stage result and
+  duration, report checksums. Identifies a run for comparison with a rerun on another host.
+- C8000v sizing via `C8KV_MEMORY` / `C8KV_SMP` (lab.env); C8000v 17.16 under nested virtualization
+  needs 8192 MB / 2 vCPU (reported by Jeleel Muibi).
+- `make tacacs-check`: validates the rendered TACACS+ config by starting the image briefly.
+- Phase 2 (`docs/PRODUCTION-PHASE2.md`):
+  - `make checkpoint`, `make rollback`, `make safe-change` (automatic rollback on failure), with a
+    deliberately broken change set `sot/changes/bad-overlap.yml`
+  - `make failover-test`: netem link failure with reroute and recovery timing (`FAILOVER=1` in ci.sh)
+  - optional telemetry stack (gnmic, Prometheus, Grafana) generated from `services.telemetry`
+  - `make batfish`: offline analysis of the rendered intent (parse, OSPF/BGP sessions, reachability)
+  - `make netbox-sync`: idempotent push of the SoT into NetBox
+  - `.github/workflows/lab.yml`: manual pipeline run on a self-hosted runner with an approval gate
+  - `requirements-optional.txt` (`make deps-optional`)
+
+### Changed (breaking)
+- Credentials are no longer in inventories; run `make vault-init` once before deploying.
+- Removed `ansible/inventory/hosts.yml`, per-platform group_vars, `nr/inventory/`, `validation/testbed.yaml`.
+- `topology/lab.clab.yml` is generated; edit `sot/fabric.yml` and run `make topology`.
+- The post-prune validation writes `reports/validation-after-prune.xml` instead of overwriting the
+  baseline report.
 
 ### Fixed
+- TACACS+ config is rendered in Marc Huber's tac_plus syntax used by `lfkeitel/tacacs_plus`
+  (the container exited on the classic Shrubbery format).
+- TACACS+ login failed on IOS XE only: the server group `TAC` was read as the keyword `tacacs+`
+  (abbreviation), which uses the global server list without the management VRF. The group is now
+  `MGMT-TACACS` on all platforms.
 - `api/restconf_get.py` stopped the pipeline when NX-OS answered HTTP 200 with YANG XML instead of the
   requested JSON. Responses are now printed as JSON or XML based on the content type.
 - `scripts/01-build-images.sh` printed a parsing warning in the XRv9000 image-size check (nested
   `virtual-size` entries in `qemu-img` JSON). The size is now read with a JSON parser.
 
-Both found by Jeleel Muibi while reproducing the lab on a fresh Proxmox host.
+  (These two found by Jeleel Muibi while reproducing the lab on a fresh Proxmox host.)
+
+### Documentation
+- README reframed as a production-style workflow on a lab: production approach, pipeline stages in
+  order (TACACS+ and failover opt-in), vault-based credentials, new layout and variables, gaps before
+  real devices.
+- PRODUCTION-PHASE1/2 linked from the overview; TACACS+ server-group naming and test diagnostics.
+- TROUBLESHOOTING: IOS XE `group TAC` → `tacacs+`, opt-in TACACS+ stages, update packs reverting fixes.
+- SECURITY, ARCHITECTURE and CONTRIBUTING updated for the vault, SoT and AAA.
 
 ## [1.2.0] - 2026-10-04
 
@@ -54,8 +110,6 @@ Both found by Jeleel Muibi while reproducing the lab on a fresh Proxmox host.
   drift false positives, yamllint warnings vs errors.
 - README: topology diagram and section on how it is maintained; interface naming note.
 - TROUBLESHOOTING: topology and diagram issues (interface names, SVG export without text, image paths).
-- README: community-tested versions (C8000v 17.16.01a, XRv9000 24.3.1, N9500v 10.4.2.F on Proxmox),
-  reproduced by Jeleel Muibi.
 
 ## [1.1.0] - 2026-10-03
 

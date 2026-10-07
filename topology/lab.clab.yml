@@ -1,14 +1,5 @@
-# Multivendor automation lab: Catalyst 8000v (IOS XE) + XRv9000 (IOS XR) + Nexus 9000v-lite (NX-OS)
-#
-#            xe1 (C8000v)
-#        Gi2 /          \ Gi3
-#   10.0.12.0/30      10.0.13.0/30
-#     Gi0/0/0/0           Eth1/2
-#       xr1 (XRv9k) ---- nx1 (N9Kv-lite)
-#     Gi0/0/0/1  10.0.23.0/30  Eth1/1
-#
-# Image tags default to the versions this lab was tested with. If yours differ,
-# override them in lab.env (see lab.env.example) instead of editing this file.
+# GENERATED from sot/fabric.yml by scripts/gen_topology.py - do not edit by hand.
+# Change the SoT, then run: make topology
 name: mvauto
 
 mgmt:
@@ -19,29 +10,36 @@ topology:
   kinds:
     cisco_c8000v:
       image: ${C8KV_IMAGE:=vrnetlab/cisco_c8000v:17.13.01a}
+      env:
+        QEMU_MEMORY: ${C8KV_MEMORY:=4096}
+        QEMU_SMP: ${C8KV_SMP:=1}
     cisco_xrv9k:
       image: ${XRV9K_IMAGE:=vrnetlab/cisco_xrv9k:24.3.1}
     cisco_n9kv:
       image: ${N9KV_IMAGE:=vrnetlab/cisco_n9kv:9500-lite-10.5.5.M}
       env:
-        QEMU_MEMORY: ${N9KV_MEMORY:=6144} # MB; full (non-lite) N9Kv needs 10240
-        QEMU_SMP: ${N9KV_SMP:=2} # full N9Kv needs 4
+        QEMU_MEMORY: ${N9KV_MEMORY:=6144}
+        QEMU_SMP: ${N9KV_SMP:=2}
 
   nodes:
     xe1:
       kind: cisco_c8000v
-      mgmt-ipv4: 172.30.30.11 # admin / admin
+      mgmt-ipv4: 172.30.30.11
     xr1:
       kind: cisco_xrv9k
-      mgmt-ipv4: 172.30.30.12 # clab / clab@123
-      startup-config: configs/xr1.cfg # raise SSH rate limit before automation connects
+      mgmt-ipv4: 172.30.30.12
+      startup-config: configs/xr1.cfg
     nx1:
       kind: cisco_n9kv
-      mgmt-ipv4: 172.30.30.13 # admin / admin
+      mgmt-ipv4: 172.30.30.13
+    tacacs:
+      kind: linux
+      image: lfkeitel/tacacs_plus:latest
+      mgmt-ipv4: 172.30.30.20
+      binds:
+        - configs/tac_plus.cfg:/etc/tac_plus/tac_plus.cfg:ro
 
   links:
-    # Cisco interface names are accepted directly by containerlab (no eth1/eth2 mapping needed).
-    # C8000v data ports start at Gi2 (Gi1 is management); N9Kv uses Ethernet1/X; XRv9000 Gi0/0/0/X.
-    - endpoints: [ "xe1:Gi2", "xr1:Gi0/0/0/0" ]
-    - endpoints: [ "xr1:Gi0/0/0/1", "nx1:Ethernet1/1" ]
-    - endpoints: [ "nx1:Ethernet1/2", "xe1:Gi3" ]
+    - endpoints: ["xe1:Gi2", "xr1:Gi0/0/0/0"]
+    - endpoints: ["xe1:Gi3", "nx1:Ethernet1/2"]
+    - endpoints: ["xr1:Gi0/0/0/1", "nx1:Ethernet1/1"]

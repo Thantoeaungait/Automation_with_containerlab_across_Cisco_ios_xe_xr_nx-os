@@ -47,6 +47,12 @@ Search this page for the exact error text you see.
 | `sudo: preserving the entire environment is not supported, '-E' is ignored` | Ubuntu 26.04 uses sudo-rs | The Makefile uses `sudo env ...`; best: `sudo usermod -aG clab_admins $USER` and log in again |
 | `ERRO container "clab-mvauto-xe1" exited; container output: ...` during deploy | `--reconfigure` destroys the previous lab; that old container had already stopped | Harmless if the new deploy continues. If nodes keep exiting: `docker ps -a` (`Exited (137)` = killed) and `sudo dmesg \| grep -i oom` — usually not enough RAM |
 
+## C8000v sizing
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| C8000v 17.16 never becomes ready; QFP process exits with `rc 139` | Too little memory/CPU for this release under nested virtualization | `C8KV_MEMORY ?= 8192` and `C8KV_SMP ?= 2` in `lab.env` (reported by Jeleel Muibi) |
+
 ## Wait (`make wait`)
 
 | Symptom | Cause | Fix |
@@ -54,7 +60,7 @@ Search this page for the exact error text you see.
 | `booting (no SSH banner)` for several minutes | VMs still booting | Normal; XRv9000 takes 10–20 min |
 | `sshd up, login not ready: ['xr1(NetmikoAuthenticationException)']` | XRv9000 starts sshd before the `clab` user exists | Normal while booting |
 | xr1 never becomes ready; XR log shows `Incoming SSH session rate limit exceeded` | IOS XR rate-limits SSH sessions from one source | Fixed by `topology/configs/xr1.cfg` (`ssh server rate-limit 600`) and a pause in `wait_ready.py`. On a running node: `conf t` → `ssh server rate-limit 600` → `commit` |
-| A polling round seems frozen | Netmiko waits for its banner timeout | Normal; `banner_timeout` is 15 s in `nr/inventory/defaults.yaml` |
+| A polling round seems frozen | Netmiko waits for its banner timeout | Normal; `banner_timeout` is 15 s in `nr/common.py` (SotInventory) |
 
 ## Bootstrap (`make bootstrap`)
 
@@ -146,6 +152,33 @@ If you get gNMI working on XRv9000 under vrnetlab, a pull request is very welcom
 | Image not shown on GitHub | Wrong path or case (`Topology.png` ≠ `topology.png`) | Check `ls docs/topologyimages/` and the `src` in README |
 | A new `docs/images/` folder is not committed | `.gitignore` ignores every `images/` folder (to keep Cisco images out of Git) | The diagram lives in `docs/topologyimages/` for that reason |
 
+## Vault, SoT and TACACS+
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Vault password file not found` / `secrets/vault.yml not found` | Vault not created on this machine (it is git-ignored) | `make vault-init` |
+| `Decryption failed` | Wrong password file (another machine, regenerated) | Restore `~/.config/mvauto/vault-pass` from your backup; otherwise recreate the vault |
+| `topology/lab.clab.yml is out of date` | SoT changed without regenerating | `make topology` |
+| `tacacs` exits: `Expected 'alias', 'id', ... but got 'key'` | Config in classic Shrubbery syntax; the image runs Marc Huber's tac_plus | Fixed in `render_tacacs.py` (spawnd + tac_plus blocks); check with `make tacacs-check` |
+| Deploy fails with `context canceled` on xe1/xr1 after a container error | One node (e.g. `tacacs`) failed, so containerlab cancelled the rest | Fix the failing node first; for TACACS+: `make tacacs-check` |
+| `tacacs` container restarting | Image or config path differs from `lfkeitel/tacacs_plus` | `docker logs clab-mvauto-tacacs`; adjust `services.tacacs.image` / bind path |
+| `make tacacs-test`: xe1 `NetmikoAuthenticationException`, nx1 passes; no xe1 line in the server's access log; `show tacacs` shows socket opens but 0 packets sent | IOS XE read `group TAC` as the keyword `tacacs+` (abbreviation), so it used the global server list without the `clab-mgmt` VRF and fell back to local, where `netops` doesn't exist | Fixed: the group is `MGMT-TACACS`. Check `show running-config \| section ^aaa` shows `group MGMT-TACACS`, then `make tacacs tacacs-test`. Never name a server group with a prefix of a keyword |
+| `make tacacs-test` fails, local accounts work | Device can't reach the server or the key differs | Read the diagnostics the test prints (server access log, device AAA config, ping in the management VRF); compare keys with `make vault-view` |
+| `make ci` passes but TACACS+ was never tested | TACACS+ stages are opt-in | `TACACS=1 make ci` |
+| Locked out after `make tacacs` | Server reachable but rejecting the account | Console (`telnet <mgmt-ip> 5000`) uses local login only; revert AAA to local there |
+
+## Phase 2 (rollback, failover, telemetry, Batfish, NetBox)
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `copy running-config` hangs or fails on IOS XE | Confirmation prompt | `checkpoint.yml` sets `file prompt quiet` first; check `show run \| include file prompt` |
+| `rollback configuration to` not found on XR | No checkpoint file | Run `make checkpoint` first (`reports/checkpoint/xr1.commit`) |
+| `netem failed` | Not in `clab_admins` and no passwordless sudo | `sudo usermod -aG clab_admins $USER`, log in again |
+| Failover detects nothing | Wrong container interface | Check `platforms.*.container_if` against `docker exec clab-mvauto-xe1 ip link` |
+| No `nxos_*` metrics in Prometheus | gnmic can't subscribe | `docker logs clab-mvauto-gnmic`; the native paths may differ on your NX-OS release |
+| Batfish container exits or is slow | Not enough RAM | Run it with the lab destroyed; `docker logs batfish` |
+| `netbox-sync`: 403 / token missing | Token not set or wrong | `make vault-edit` → `netbox.token` |
+
 ## Lint (`make lint`)
 
 | Symptom | Cause | Fix |
@@ -153,6 +186,12 @@ If you get gNMI working on XRv9000 under vrnetlab, a pull request is very welcom
 | Hundreds of yamllint warnings under `ansible/collections/` | yamllint scanned downloaded collections | `.yamllint` ignores `ansible/collections/` and `.venv/` |
 | `trailing spaces` error | Invisible spaces at line ends | `sed -i 's/[[:space:]]*$//' <file>` |
 | `warning too many blank lines (1 > 0)` | An empty line at the end of a YAML file | Only a warning (lint still passes); remove it with `sed -i '${/^$/d}' <file>` |
+
+## Releases and update packs
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| A problem fixed earlier comes back after applying an update pack (`APPLY.sh`) | The pack was built before the fix and copies older files over the working tree; or the release branch was created from `main` instead of the branch with the fix | Create release branches from the latest released branch; after applying a pack, `git diff <previous-release-branch> -- <file>` for files it touched, and run the full pipeline (`TACACS=1 FAILOVER=1 make ci`) before committing |
 
 ## Git
 

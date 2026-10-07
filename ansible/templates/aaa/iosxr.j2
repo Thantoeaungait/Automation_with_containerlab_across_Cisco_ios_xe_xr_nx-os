@@ -1,0 +1,15 @@
+aaa group server tacacs+ MGMT-TACACS
+ server-private {{ tacacs_ip }} port 49
+  key 0 {{ tacacs.key }}
+ !
+{% if mgmt_vrf %}
+ vrf {{ mgmt_vrf }}
+{% endif %}
+!
+aaa authentication login CONSOLE local
+aaa authentication login default group MGMT-TACACS local
+aaa authorization exec default group MGMT-TACACS local
+aaa accounting exec default start-stop group MGMT-TACACS
+line console
+ login authentication CONSOLE
+!

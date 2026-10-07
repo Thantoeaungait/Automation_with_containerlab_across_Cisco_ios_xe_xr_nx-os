@@ -1,0 +1,50 @@
+---
+# Save a rollback point on every device before a change (make checkpoint / make safe-change).
+#   IOS XE  copy running-config to bootflash:mvauto-checkpoint.cfg   -> configure replace
+#   NX-OS   checkpoint "mvauto"                                      -> rollback running-config checkpoint
+#   IOS XR  record the latest commit ID in reports/checkpoint/       -> rollback configuration to <id>
+# Commands differ slightly between releases: check with `?` on the device if a task fails.
+- name: Create rollback checkpoints
+  hosts: lab
+  gather_facts: false
+  vars:
+    checkpoint_dir: "{{ playbook_dir }}/../../reports/checkpoint"
+
+  tasks:
+    - name: IOS XE - suppress copy prompts (needed for unattended copy)
+      when: ansible_network_os == 'cisco.ios.ios'
+      cisco.ios.ios_config:
+        lines: [file prompt quiet]
+
+    - name: IOS XE - save running-config to bootflash
+      when: ansible_network_os == 'cisco.ios.ios'
+      cisco.ios.ios_command:
+        commands: copy running-config bootflash:mvauto-checkpoint.cfg
+
+    - name: NX-OS - replace the checkpoint
+      when: ansible_network_os == 'cisco.nxos.nxos'
+      cisco.nxos.nxos_command:
+        commands:
+          - clear checkpoint database
+          - checkpoint mvauto
+
+    - name: IOS XR - read the latest commit ID
+      when: ansible_network_os == 'cisco.iosxr.iosxr'
+      cisco.iosxr.iosxr_command:
+        commands: show configuration commit list 1
+      register: xr_commits
+
+    - name: IOS XR - store the commit ID on the controller
+      when: ansible_network_os == 'cisco.iosxr.iosxr'
+      delegate_to: localhost
+      block:
+        - name: Create checkpoint directory
+          ansible.builtin.file:
+            path: "{{ checkpoint_dir }}"
+            state: directory
+            mode: "0755"
+        - name: Write commit ID
+          ansible.builtin.copy:
+            content: "{{ xr_commits.stdout[0] | regex_search('^\\s*1\\s+(\\d+)', '\\1', multiline=True) | first }}\n"
+            dest: "{{ checkpoint_dir }}/{{ inventory_hostname }}.commit"
+            mode: "0644"

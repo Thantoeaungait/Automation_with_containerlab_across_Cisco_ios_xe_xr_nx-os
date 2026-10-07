@@ -22,14 +22,20 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
           pip install -q yamllint "ansible-core>=2.17,<2.21" jinja2 netaddr pyyaml
       - name: yamllint
-        run: yamllint -c .yamllint topology sot ansible validation nr .github
+        run: yamllint -c .yamllint topology sot ansible validation nr secrets/vault.example.yml .github
       - name: shellcheck
         run: shellcheck -S warning scripts/*.sh api/gnmi_check.sh
       - name: Python syntax
-        run: python -m py_compile nr/*.py api/*.py validation/*.py scripts/*.py
-      - name: Ansible syntax check
+        run: python -m py_compile lab/*.py nr/*.py api/*.py validation/*.py scripts/*.py ansible/inventory/sot.py
+      - name: Topology is in sync with the SoT
+        run: python scripts/gen_topology.py --check
+      - name: Ansible syntax check (throwaway, unencrypted vault from the example)
         run: |
+          cp secrets/vault.example.yml secrets/vault.yml
+          echo ci > "$RUNNER_TEMP/vault-pass"
+          export ANSIBLE_VAULT_PASSWORD_FILE="$RUNNER_TEMP/vault-pass"
           ansible-galaxy collection install -r ansible/requirements.yml -p ansible/collections
-          ansible-playbook --syntax-check ansible/playbooks/bootstrap.yml ansible/playbooks/configure.yml
+          ansible-inventory --graph
+          ansible-playbook --syntax-check ansible/playbooks/*.yml
       - name: Render templates from SoT
         run: python scripts/render_templates.py --change sot/changes/loopback100.yml

@@ -1,0 +1,43 @@
+# Full lab pipeline on YOUR self-hosted runner (the lab host). Manual trigger only:
+# a public repository must never run untrusted pull-request code on a private machine.
+# Setup: docs/PRODUCTION-PHASE2.md ("Self-hosted runner").
+name: lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      tacacs:
+        description: "Include TACACS+ stages"
+        type: boolean
+        default: false
+      failover:
+        description: "Include the failure test"
+        type: boolean
+        default: false
+
+concurrency:
+  group: lab-host
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    runs-on: [self-hosted, linux, clab]
+    environment: lab            # add required reviewers in Settings -> Environments for an approval gate
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: make deps
+      - name: Pipeline (deploy -> validate -> change -> prune -> drift -> audit -> APIs -> destroy)
+        env:
+          TACACS: ${{ inputs.tacacs && '1' || '0' }}
+          FAILOVER: ${{ inputs.failover && '1' || '0' }}
+        run: ./scripts/ci.sh
+      - name: Keep the evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-reports-${{ github.run_number }}
+          path: |
+            reports/
+            backups/

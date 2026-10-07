@@ -10,13 +10,13 @@ PLAYBOOK     := $(VENV)/bin/ansible-playbook
 # Image tags / NX-OS sizing come from lab.env (shell exports override it)
 -include lab.env
 TOPO         ?= topology/lab.clab.yml
-LAB_VARS := C8KV_IMAGE N9KV_IMAGE N9KV_MEMORY N9KV_SMP XRV9K_IMAGE GNMI_SKIP
+LAB_VARS := C8KV_IMAGE C8KV_MEMORY C8KV_SMP N9KV_IMAGE N9KV_MEMORY N9KV_SMP XRV9K_IMAGE GNMI_SKIP
 export $(LAB_VARS)
 CLAB_ENV := $(foreach v,$(LAB_VARS),$(if $($(v)),$(v)=$($(v))))
 # clab_admins members run containerlab directly; otherwise pass vars via `sudo env`
 # (works with classic sudo and Ubuntu 26.04's sudo-rs, which has no -E)
 CLAB ?= $(if $(filter clab_admins,$(shell id -nG)),containerlab,sudo env $(CLAB_ENV) containerlab)
-LAB_IPS := 172.30.30.11 172.30.30.12 172.30.30.13
+LAB_IPS := $(shell sed -n 's/.*mgmt_ip: *\([0-9.]*\).*/\1/p' sot/fabric.yml)
 
 WAIT_TIMEOUT ?= 1800
 
@@ -24,7 +24,7 @@ export ANSIBLE_CONFIG := $(CURDIR)/ansible.cfg
 export PATH := $(CURDIR)/$(VENV)/bin:$(PATH)
 
 .DEFAULT_GOAL := help
-.PHONY: help deps env lint render validate-bgp prune-check prune golden drift drift-check deploy wait bootstrap configure dry-run validate change validate-change \
+.PHONY: help deps deps-optional env lint render tacacs-check checkpoint rollback safe-change failover-test telemetry-config batfish netbox-sync vault-init vault-edit vault-view vault-encrypt topology topology-check tacacs-config tacacs tacacs-test pki testbed pre-check post-check state-diff validate-bgp prune-check prune golden drift drift-check deploy wait bootstrap configure dry-run validate change validate-change \
 	    audit netconf restconf gnmi apis inspect graph ssh-xe ssh-xr ssh-nx destroy ci clean
 
 help: ## List targets
@@ -36,9 +36,10 @@ deps: ## Create Python 3.12 venv + install Python deps and Ansible collections
 	$(VENV)/bin/ansible-galaxy collection install -r ansible/requirements.yml -p ansible/collections
 
 lint: ## Static checks (no lab needed)
-	$(VENV)/bin/yamllint -c .yamllint topology sot ansible validation nr
+	$(VENV)/bin/yamllint -c .yamllint topology sot ansible validation nr secrets/vault.example.yml
 	shellcheck -S warning scripts/*.sh api/gnmi_check.sh
-	$(PY) -m py_compile nr/*.py api/*.py validation/*.py
+	$(PY) -m py_compile lab/*.py nr/*.py api/*.py validation/*.py ansible/inventory/sot.py
+	$(PY) scripts/gen_topology.py --check
 	$(PY) scripts/render_templates.py >/dev/null && echo "templates render OK"
 
 render: ## Print rendered day-1 configs (CHANGE=... to include a change set)
@@ -47,7 +48,7 @@ render: ## Print rendered day-1 configs (CHANGE=... to include a change set)
 env: ## Show image/sizing variables passed to containerlab
 	@$(foreach v,$(LAB_VARS),echo "$(v)=$($(v))";)
 
-deploy: ## Deploy the topology
+deploy: topology-check tacacs-config telemetry-config ## Deploy the topology
 	$(CLAB) deploy -t $(TOPO) --reconfigure
 	@for ip in $(LAB_IPS); do ssh-keygen -R $$ip >/dev/null 2>&1 || true; done
 
@@ -64,7 +65,7 @@ dry-run: ## Show what configure would change
 	$(PLAYBOOK) ansible/playbooks/configure.yml --check --diff
 
 validate: ## pyATS validation of baseline intent
-	$(PY) validation/validate.py --label baseline
+	$(PY) validation/validate.py --label $(or $(LABEL),baseline)
 
 change: ## Apply change set $(CHANGE)
 	$(PLAYBOOK) ansible/playbooks/configure.yml --diff -e @$(CHANGE)
@@ -91,6 +92,85 @@ drift-check: ## Drift between SoT and devices (Ansible check mode)
 	@out=$$($(PLAYBOOK) ansible/playbooks/configure.yml --check --diff 2>&1); echo "$$out"; \
 	if echo "$$out" | grep -Eq 'changed=[1-9]'; then echo ">>> DRIFT: devices differ from SoT"; exit 1; \
 	else echo ">>> No drift from SoT"; fi
+
+vault-init: ## Create vault password (openssl rand -base64 32) + encrypted secrets/vault.yml
+	VAULT_BIN=$(VENV)/bin/ansible-vault ./scripts/vault-init.sh
+
+vault-edit: ## Edit the encrypted secrets (credentials, TACACS+ key, PKI password)
+	$(VENV)/bin/ansible-vault edit secrets/vault.yml
+
+vault-view: ## Show the decrypted secrets
+	$(VENV)/bin/ansible-vault view secrets/vault.yml
+
+vault-encrypt: ## Encrypt secrets/vault.yml if it was left in plain text
+	$(VENV)/bin/ansible-vault encrypt secrets/vault.yml
+
+topology: ## Regenerate topology/lab.clab.yml from sot/fabric.yml
+	$(PY) scripts/gen_topology.py
+
+topology-check: ## Fail if topology/lab.clab.yml is out of date with the SoT
+	$(PY) scripts/gen_topology.py --check
+
+tacacs-config: ## Render the TACACS+ server config from SoT + vault (needed before deploy)
+	$(PY) scripts/render_tacacs.py
+
+tacacs-check: tacacs-config ## Start the TACACS+ image briefly to validate its config (no lab needed)
+	./scripts/tacacs-check.sh
+
+tacacs: ## Point device AAA at the TACACS+ server (local fallback, local console)
+	$(PLAYBOOK) ansible/playbooks/tacacs.yml --diff
+
+tacacs-test: ## Log in with the TACACS-only account and show server accounting
+	$(PY) nr/tacacs_test.py
+
+pki: ## Create lab CA + device certificates in secrets/pki/
+	PY=$(PY) ./scripts/pki.sh
+
+testbed: ## Write a pyATS testbed (passwords as %ENV{}) for the genie CLI
+	$(PY) -m lab.sot testbed > validation/testbed.generated.yaml
+
+pre-check: testbed ## Snapshot OSPF/BGP/interface state before a change
+	@eval "$$($(PY) -m lab.sot env)"; $(VENV)/bin/genie learn ospf bgp interface \
+	  --testbed-file validation/testbed.generated.yaml --output reports/state-pre
+
+post-check: testbed ## Snapshot the same state after a change
+	@eval "$$($(PY) -m lab.sot env)"; $(VENV)/bin/genie learn ospf bgp interface \
+	  --testbed-file validation/testbed.generated.yaml --output reports/state-post
+
+state-diff: ## Show what changed between pre-check and post-check
+	$(VENV)/bin/genie diff reports/state-pre reports/state-post --output reports/state-diff
+
+deps-optional: ## Optional tools: pybatfish, pynetbox (docs/PRODUCTION-PHASE2.md)
+	uv pip install --python $(PY) -r requirements-optional.txt
+
+checkpoint: ## Save a rollback point on every device
+	$(PLAYBOOK) ansible/playbooks/checkpoint.yml
+
+rollback: ## Return every device to the last checkpoint
+	$(PLAYBOOK) ansible/playbooks/rollback.yml
+
+safe-change: ## checkpoint -> apply $(CHANGE) -> validate; roll back automatically on failure
+	$(PLAYBOOK) ansible/playbooks/checkpoint.yml
+	@if $(PLAYBOOK) ansible/playbooks/configure.yml --diff -e @$(CHANGE) && \
+	     $(PY) validation/validate.py --label safe-change --change $(CHANGE); then \
+	   echo ">>> change accepted"; \
+	 else \
+	   echo ">>> change failed: rolling back to the checkpoint"; \
+	   $(PLAYBOOK) ansible/playbooks/rollback.yml && $(PY) validation/validate.py --label after-rollback; \
+	   exit 1; \
+	 fi
+
+failover-test: ## Break the SoT failover link, check reroute and recovery
+	$(PY) validation/failover.py
+
+telemetry-config: ## Render gnmic/Prometheus/Grafana configs (when services.telemetry.enabled)
+	$(PY) scripts/render_telemetry.py
+
+batfish: ## Analyse the rendered intent with Batfish, no routers needed (CHANGE=... optional)
+	$(PY) scripts/batfish_check.py $(if $(filter command line,$(origin CHANGE)),--change $(CHANGE))
+
+netbox-sync: ## Push the SoT into NetBox (services.netbox, token in the vault)
+	$(PY) scripts/netbox_sync.py
 
 audit: ## Nornir: backup configs + compliance audit
 	$(PY) nr/backup_and_audit.py

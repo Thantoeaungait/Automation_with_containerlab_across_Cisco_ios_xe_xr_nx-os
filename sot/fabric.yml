@@ -1,7 +1,18 @@
 ---
-# Single source of truth (intent).
-#   Ansible renders configuration from it.
-#   validation/validate.py and validate_bgp.py derive the expected state from it.
+# Single source of truth for the whole lab.
+#
+#   topology/lab.clab.yml        generated from this file  (make topology)
+#   Ansible inventory            ansible/inventory/sot.py reads this file
+#   Nornir / pyATS / API scripts lab/sot.py reads this file
+#   Expected state (validation)  derived from this file
+#
+# Secrets (passwords, TACACS+ key) are NOT here: they live in the encrypted
+# secrets/vault.yml (make vault-init), referenced per platform via `credentials`.
+
+lab:
+  name: mvauto
+  mgmt_subnet: 172.30.30.0/24
+
 ospf:
   process_id: 1
   area: 0
@@ -10,9 +21,80 @@ ospf:
 bgp:
   asn: 65000               # iBGP full mesh between Loopback0 addresses
 
+# How each platform is run and reached. One place to change a kind, image or tool mapping.
+platforms:
+  iosxe:
+    clab_kind: cisco_c8000v
+    image: ${C8KV_IMAGE:=vrnetlab/cisco_c8000v:17.13.01a}
+    clab_env:
+      QEMU_MEMORY: ${C8KV_MEMORY:=4096}   # MB; 17.16 in nested virtualization needed 8192 (QFP rc 139 at 4096)
+      QEMU_SMP: ${C8KV_SMP:=1}            # 17.16 nested: 2
+    clab_if: { from: GigabitEthernet, to: Gi }        # GigabitEthernet2 -> Gi2
+    container_if: { match: 'GigabitEthernet(\d+)$', offset: -1 }   # Gi2 -> eth1 inside the container
+    ansible_network_os: cisco.ios.ios
+    netmiko: cisco_xe
+    pyats_os: iosxe
+    ncclient: iosxe
+    gnmi: { tls: insecure, encoding: json_ietf, path: "/interfaces/interface[name=Loopback0]/state/oper-status" }
+  iosxr:
+    clab_kind: cisco_xrv9k
+    image: ${XRV9K_IMAGE:=vrnetlab/cisco_xrv9k:24.3.1}
+    clab_if: { from: GigabitEthernet, to: Gi }        # GigabitEthernet0/0/0/0 -> Gi0/0/0/0
+    container_if: { match: 'GigabitEthernet0/0/0/(\d+)$', offset: 1 }   # Gi0/0/0/0 -> eth1
+    ansible_network_os: cisco.iosxr.iosxr
+    netmiko: cisco_xr
+    pyats_os: iosxr
+    ncclient: iosxr
+    gnmi: { tls: insecure, encoding: json_ietf, path: "/interfaces/interface[name=Loopback0]/state/oper-status" }
+  nxos:
+    clab_kind: cisco_n9kv
+    image: ${N9KV_IMAGE:=vrnetlab/cisco_n9kv:9500-lite-10.5.5.M}
+    clab_env:
+      QEMU_MEMORY: ${N9KV_MEMORY:=6144}   # MB; full (non-lite) N9Kv needs 10240
+      QEMU_SMP: ${N9KV_SMP:=2}
+    clab_if: { from: Ethernet, to: Ethernet }         # Ethernet1/1 stays Ethernet1/1
+    container_if: { match: 'Ethernet1/(\d+)$', offset: 0 }   # Ethernet1/1 -> eth1
+    ansible_network_os: cisco.nxos.nxos
+    netmiko: cisco_nxos
+    pyats_os: nxos
+    ncclient: nexus
+    gnmi: { tls: skip-verify, encoding: json, path: "/System/name" }
+
+# TLS: clients verify device certificates against the lab CA (make pki) once this is true.
+# Set it only after installing the certificates on the devices (docs/PRODUCTION-PHASE1.md).
+pki:
+  verify_with_lab_ca: false
+
+# Supporting services that run as containers in the same lab
+services:
+  tacacs:
+    mgmt_ip: 172.30.30.20
+    image: lfkeitel/tacacs_plus:latest
+    apply_to: [iosxe, nxos]   # add iosxr after checking XR task attributes (see docs/PRODUCTION-PHASE1.md)
+  telemetry:                  # gnmic -> Prometheus -> Grafana (docs/PRODUCTION-PHASE2.md)
+    enabled: false            # ~0.5 GB RAM; set true, then: make topology
+    targets: [nx1]            # devices with working gNMI in this lab
+    sample_interval: 30s
+    gnmic_ip: 172.30.30.21
+    prometheus_ip: 172.30.30.22
+    grafana_ip: 172.30.30.23
+    gnmic_image: ghcr.io/openconfig/gnmic:latest
+    prometheus_image: prom/prometheus:latest
+    grafana_image: grafana/grafana:latest
+  netbox:                     # optional external NetBox kept in sync from this file (make netbox-sync)
+    url: http://localhost:8000
+    site: mvauto-lab
+
+# Failure test (make failover-test): the link to break and the reachability that must survive
+failover:
+  device: xe1
+  interface: GigabitEthernet2     # xe1 <-> xr1
+  expect_reach: [xr1]             # xe1 must still reach xr1's Loopback0 (via nx1)
+
 devices:
   xe1:
     platform: iosxe
+    mgmt_ip: 172.30.30.11
     router_id: 1.1.1.1
     loopbacks:
       - { name: Loopback0, ipv4: 1.1.1.1/32 }
@@ -24,6 +106,8 @@ devices:
 
   xr1:
     platform: iosxr
+    mgmt_ip: 172.30.30.12
+    clab_startup_config: configs/xr1.cfg   # SSH rate limit before automation connects
     router_id: 2.2.2.2
     loopbacks:
       - { name: Loopback0, ipv4: 2.2.2.2/32 }
@@ -35,6 +119,7 @@ devices:
 
   nx1:
     platform: nxos
+    mgmt_ip: 172.30.30.13
     router_id: 3.3.3.3
     loopbacks:
       - { name: loopback0, ipv4: 3.3.3.3/32 }

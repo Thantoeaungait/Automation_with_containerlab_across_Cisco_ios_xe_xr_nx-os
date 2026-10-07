@@ -1,8 +1,13 @@
-"""Lab device registry for the API scripts (override hosts via env for remote runners)."""
-import os
+"""Device registry for the API scripts, built from the single source of truth."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lab import sot  # noqa: E402
 
 DEVICES = {
-    "xe1": {"host": os.getenv("XE1_HOST", "172.30.30.11"), "username": "admin", "password": "admin", "os": "iosxe"},
-    "xr1": {"host": os.getenv("XR1_HOST", "172.30.30.12"), "username": "clab", "password": "clab@123", "os": "iosxr"},
-    "nx1": {"host": os.getenv("NX1_HOST", "172.30.30.13"), "username": "admin", "password": "admin", "os": "nxos"},
+    name: {"host": d["mgmt_ip"], "username": d["username"], "password": d["password"],
+           "os": d["platform"], "ncclient": d["ncclient"]}
+    for name, d in sot.devices().items()
 }
+CA_CERT = sot.lab_ca()   # None until pki.verify_with_lab_ca is true in the SoT

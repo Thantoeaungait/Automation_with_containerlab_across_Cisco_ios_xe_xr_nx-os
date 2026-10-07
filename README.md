@@ -3,19 +3,23 @@
 [![lint](https://github.com/Thantoeaungait/Automation_with_containerlab_across_Cisco_ios_xe_xr_nx-os/actions/workflows/lint.yml/badge.svg)](https://github.com/Thantoeaungait/Automation_with_containerlab_across_Cisco_ios_xe_xr_nx-os/actions/workflows/lint.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**A learning lab for Cisco network automation.** One containerlab topology runs a Catalyst 8000v,
-an XRv9000 and a Nexus 9000v side by side. Ansible configures OSPF and iBGP from a single YAML
-source of truth, pyATS validates the result, Nornir audits the devices and detects drift, and
-NETCONF, RESTCONF and gNMI are tested from the host. The whole lifecycle — **deploy → configure →
-validate → change → validate → prune → drift check → destroy** — runs with one command.
+**A production-style automation workflow, rehearsed on a Cisco lab.** One containerlab topology runs
+a Catalyst 8000v, an XRv9000 and a Nexus 9000v side by side. Everything is driven from a single YAML
+source of truth with secrets in an encrypted vault: Ansible configures OSPF and iBGP, logins go
+through TACACS+, pyATS validates against intent, changes are checkpointed and rolled back on failure,
+Nornir audits and detects drift, and a failure test breaks a link to prove the network reroutes.
+The whole lifecycle — **deploy → AAA → configure → validate → change → validate → prune → drift →
+audit → APIs → failure test → destroy** — runs with one command and leaves a run manifest behind.
 
 <p align="center">
   <img src="docs/topologyimages/topology.png" alt="Topology: Catalyst 8000v (IOS XE), XRv9000 (IOS XR) and Nexus 9000v-lite (NX-OS) in a triangle with OSPF and iBGP" width="800">
 </p>
 
-> **About this project.** I built this lab while learning network automation from scratch. I don't
-> have experience in a real-world network automation job, so treat it as an educational lab, not a
-> production framework. Every problem I hit along the way is documented with its fix in
+> **About this project.** I started this lab while learning network automation from scratch (v1.x).
+> Version 2.0 rebuilds it around production practices — vault, single source of truth, central AAA,
+> rollback, failure testing, an approval-gated pipeline — so the workflow can be practised end to end.
+> It is still a lab, not a framework to point at real devices: [docs/PRODUCTION.md](docs/PRODUCTION.md)
+> lists what is covered and the gaps to close first. Every problem hit along the way is documented in
 > [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md). Feedback from experienced engineers is very welcome.
 
 > **Cisco images are not included.** They are licensed software; you must obtain them yourself.
@@ -29,20 +33,26 @@ validate → change → validate → prune → drift check → destroy** — run
 - [Tested versions](#tested-versions)
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
+- [Production approach](#production-approach)
 - [Pipeline stages](#pipeline-stages)
 - [How each tool connects](#how-each-tool-connects)
+- [Secrets, single source of truth and AAA](#secrets-single-source-of-truth-and-aaa)
+- [Safe changes, failure tests and observability](#safe-changes-failure-tests-and-observability)
+- [Removing configuration and detecting drift](#removing-configuration-and-detecting-drift)
 - [Making a change](#making-a-change)
 - [Repository layout](#repository-layout)
 - [Configuration reference](#configuration-reference)
 - [Known limitations](#known-limitations)
-- [Going further: what production would add](#going-further-what-production-would-add)
+- [Before real devices](#before-real-devices)
 - [Documentation](#documentation)
 
 ## What you'll practice
 
-- **Lab as code** — the topology is a YAML file in Git; every deploy is identical.
-- **Single source of truth** — `sot/fabric.yml` holds the intent. Ansible renders configuration from it,
-  and pyATS derives the expected state (OSPF neighbors, reachability) from the same file.
+- **Lab as code** — the topology is generated from the SoT and kept in Git; every deploy is identical.
+- **Single source of truth** — `sot/fabric.yml` holds the intent. The topology and every tool's inventory
+  are derived from it, and pyATS derives the expected state (OSPF neighbors, reachability) from the same file.
+- **Secrets out of Git** — credentials, the TACACS+ key and certificate passwords in an ansible-vault file.
+- **Central AAA** — TACACS+ authentication and accounting with local fallback and a local-only console.
 - **Changes as data** — a change is a small YAML overlay in `sot/changes/`, validated before you keep it.
 - **Day-0 vs day-1** — bootstrap enables model-driven interfaces over SSH, then day-1 configures the network.
 - **Idempotent configuration** — resource modules for interface state; templates that match running-config.
@@ -50,7 +60,10 @@ validate → change → validate → prune → drift check → destroy** — run
 - **Removing what isn't declared** — `prune` deletes loopbacks that exist on a device but not in the SoT.
 - **Drift detection** — two complementary methods: SoT vs device (Ansible check mode) and golden config diff.
 - **Multiple automation interfaces** — Ansible, Nornir/Netmiko, pyATS/Genie, NETCONF, RESTCONF, gNMI.
-- **A real pipeline** — readiness polling, JUnit reports, automatic teardown.
+- **Safe changes** — checkpoint, apply, validate, automatic rollback on failure; pre/post state diff.
+- **Failure testing** — break a link with netem and measure reroute and recovery.
+- **A real pipeline** — readiness polling, JUnit reports, run manifest, automatic teardown, optional
+  self-hosted runner with an approval gate.
 
 ## Tested versions
 
@@ -61,19 +74,8 @@ validate → change → validate → prune → drift check → destroy** — run
 | Catalyst 8000v (IOS XE) | 17.13.01a — `vrnetlab/cisco_c8000v:17.13.01a` |
 | XRv9000 (IOS XR) | 24.3.1 — `vrnetlab/cisco_xrv9k:24.3.1` (built with `INSTALL=true`) |
 | Nexus 9000v-lite (NX-OS) | 9500v-lite 10.5.5.M — `vrnetlab/cisco_n9kv:9500-lite-10.5.5.M` |
+| TACACS+ server | Marc Huber's tac_plus — `lfkeitel/tacacs_plus:latest` |
 | Python (venv) | 3.12 via uv |
-
-**Community-tested** — reproduced independently by [Jeleel Muibi]
-on a fresh Proxmox host (8 vCPU, 32 GB RAM, 80 GB disk), commit `133f875`:
-
-| Component | Version |
-|---|---|
-| Catalyst 8000v (IOS XE) | 17.16.01a |
-| XRv9000 (IOS XR) | 24.3.1 |
-| Nexus 9500v (NX-OS) | 10.4.2.F |
-
-Result: baseline validation 12/12, change validation 18/18, NETCONF on all three platforms, gNMI on
-NX-OS. The two issues found (NX-OS RESTCONF XML response, XRv9K image-size warning) are fixed.
 
 Other versions will probably work; if your image tags differ, set them in `lab.env` (see below).
 
@@ -108,11 +110,17 @@ make env                       # shows what containerlab will receive
 # 4. Python toolchain (Python 3.12 venv + Ansible collections)
 make deps
 
-# 5. Run the whole pipeline
-make ci
+# 5. Secrets: vault password (openssl rand -base64 32) + encrypted credentials
+make vault-init
+
+# 6. Run the whole pipeline (TACACS+ and the failure test are opt-in)
+make ci                        # core pipeline
+TACACS=1 FAILOVER=1 make ci    # everything, as in the v2.0.0 reference run
 ```
 
 The first run takes a while: XRv9000 needs 10–20 minutes to boot. `make wait` polls until all nodes are ready.
+Back up the vault password file `make vault-init` creates (`~/.config/mvauto/vault-pass`): without it
+the secrets cannot be decrypted.
 
 **Run stages yourself** (the lab stays up; nothing is destroyed automatically):
 
@@ -124,29 +132,45 @@ make ssh-xr                # log in to a node (ssh-xe, ssh-nx)
 make destroy               # stop the lab
 ```
 
-To keep the lab when the pipeline fails: `KEEP_LAB=1 ./scripts/ci.sh`.
+To keep the lab after the pipeline (passed or failed): `KEEP_LAB=1 make ci`.
+
+## Production approach
+
+v2.0 practises the workflow a production automation setup depends on: intent in one place, no
+secrets in Git, every change validated and reversible, central AAA, failure tested on purpose, and
+evidence from every run. [docs/PRODUCTION.md](docs/PRODUCTION.md) maps each practice to the command
+that exercises it, shows the reference pipeline run, and lists the gaps to close before real devices.
+How-to guides: [phase 1](docs/PRODUCTION-PHASE1.md) (vault, SoT, TACACS+, TLS, pre/post checks) and
+[phase 2](docs/PRODUCTION-PHASE2.md) (rollback, failure test, telemetry, Batfish, NetBox, self-hosted CI).
 
 ## Pipeline stages
+
+Stages run by `make ci` in this order (`scripts/ci.sh`):
 
 | `make` target | Tool | What it does |
 |---|---|---|
 | `deploy` | containerlab | Starts the topology; clears stale SSH host keys for the lab IPs |
 | `wait` | Nornir | Polls until each node returns an SSH banner and accepts a login |
 | `bootstrap` | Ansible | Day-0: enables NETCONF, RESTCONF, gNMI/gRPC (detects the XR management VRF) |
-| `dry-run` | Ansible | Shows what day-1 would change (`--check --diff`) |
+| `tacacs` (`TACACS=1`) | Ansible | AAA via TACACS+ on IOS XE and NX-OS, local fallback, local-only console |
+| `tacacs-test` (`TACACS=1`) | Nornir | Logs in with a TACACS-only account; prints server access/accounting logs |
 | `configure` | Ansible | Day-1: addressing + OSPF rendered from `sot/fabric.yml` |
 | `validate` | pyATS/Genie | OSPF FULL neighbors per node + full-mesh pings of OSPF loopbacks → `reports/validation-baseline.xml` |
 | `validate-bgp` | pyATS/Genie | iBGP sessions Established per node + reachability of BGP-only prefixes → `reports/validation-bgp.xml` |
 | `change` | Ansible | Applies a change set (default `sot/changes/loopback100.yml`) |
 | `validate-change` | pyATS/Genie | Re-validates including the change → `reports/validation-change.xml` |
 | `prune` | Ansible | Removes loopbacks not declared in the SoT (Loopback0 is protected); `prune-check` previews |
+| `validate LABEL=after-prune` | pyATS/Genie | Back to baseline after the prune → `reports/validation-after-prune.xml` |
 | `drift-check` | Ansible | Check mode: fails if any device differs from what the SoT would render |
-| `golden` / `drift` | Nornir | Save running-configs as a baseline / diff them later → `reports/drift-<host>.diff` |
 | `audit` | Nornir | Config backups to `backups/` + compliance rules → `reports/audit.json` |
 | `apis` | ncclient · requests · gnmic | NETCONF, RESTCONF and gNMI smoke tests |
-| `destroy` | containerlab | Tears the lab down |
+| `failover-test` (`FAILOVER=1`) | containerlab netem · Netmiko | Breaks the SoT failover link, measures reroute and recovery |
+| `destroy` | containerlab | Tears the lab down (skipped with `KEEP_LAB=1`) |
+| (`ci.sh` exit) | Python | `reports/run-manifest.json`: commit, image IDs, host, per-stage result and duration, report checksums |
 
-`make help` lists all targets, including `lint`, `render`, `env`, `inspect` and `graph`.
+Not in the pipeline, run on demand: `dry-run` (`--check --diff`), `safe-change`, `checkpoint` /
+`rollback`, `pre-check` / `post-check` / `state-diff`, `golden` / `drift`, `pki`, `batfish`,
+`netbox-sync`. `make help` lists all targets, including `lint`, `render`, `env`, `inspect` and `graph`.
 
 ## How each tool connects
 
@@ -162,7 +186,32 @@ To keep the lab when the pipeline fails: `KEEP_LAB=1 ./scripts/ci.sh`.
 Links in `topology/lab.clab.yml` use the interface names you see on each device (`Gi2`, `Gi0/0/0/0`,
 `Ethernet1/1`), so the topology file, the SoT and `show` output all match.
 
-Default credentials (containerlab defaults): xe1 / nx1 `admin` / `admin`, xr1 `clab` / `clab@123`.
+Credentials come from the vault (`make vault-view`). The template keeps the containerlab defaults for
+the automation accounts (xe1 / nx1 `admin`, xr1 `clab`) and generates random values for the TACACS+
+key, the TACACS-only `netops` account and the certificate password.
+
+## Secrets, single source of truth and AAA
+
+- **Vault:** all credentials, the TACACS+ key and the PKCS#12 password live in `secrets/vault.yml`,
+  encrypted with ansible-vault (`make vault-init`, `make vault-edit`). Nothing secret is in Git.
+- **One SoT:** `sot/fabric.yml` describes devices, platforms, management IPs and services. The
+  containerlab topology is generated from it (`make topology`), and Ansible, Nornir, pyATS and the API
+  scripts all read it through `lab/sot.py` / `ansible/inventory/sot.py`.
+- **TACACS+:** a tac_plus container in the lab; `make tacacs` points device AAA at it with local
+  fallback and a local-only console; `make tacacs-test` proves it with a TACACS-only account and,
+  on failure, prints the server's access log and the device's AAA state.
+- **TLS:** `make pki` creates a lab CA and device certificates.
+
+Details: [docs/PRODUCTION-PHASE1.md](docs/PRODUCTION-PHASE1.md).
+
+## Safe changes, failure tests and observability
+
+- `make safe-change` takes a checkpoint, applies the change, validates, and rolls back on failure.
+- `make failover-test` breaks a link with netem and measures reroute and recovery.
+- Optional telemetry stack (gnmic → Prometheus → Grafana), Batfish analysis without routers,
+  NetBox sync, and a self-hosted GitHub runner workflow.
+
+Details: [docs/PRODUCTION-PHASE2.md](docs/PRODUCTION-PHASE2.md).
 
 ## Removing configuration and detecting drift
 
@@ -209,15 +258,19 @@ To change the permanent design (links, addressing, nodes), edit `sot/fabric.yml`
 
 ```
 .
-├── topology/            lab.clab.yml (Cisco interface names) · configs/xr1.cfg · *.annotations.json (TopoViewer diagram)
-├── sot/                 fabric.yml (intent) · changes/*.yml (change sets)
-├── ansible/             inventory · playbooks (bootstrap, configure, prune) · templates (bootstrap, day1)
-├── nr/                  Nornir: wait_ready.py · backup_and_audit.py · drift.py · inventory
-├── validation/          pyATS testbed.yaml · validate.py · validate_bgp.py (intent-derived checks, JUnit)
+├── topology/            lab.clab.yml (generated) · configs/ (xr1.cfg; tac_plus.cfg rendered, git-ignored) · *.annotations.json
+├── sot/                 fabric.yml (single source of truth) · changes/*.yml (change sets, incl. bad-overlap.yml)
+├── lab/                 sot.py: loads the SoT + vault for every Python tool
+├── secrets/             vault.example.yml (vault.yml and pki/ are created locally, git-ignored)
+├── ansible/             inventory/sot.py (dynamic) · playbooks (bootstrap, configure, prune, tacacs, checkpoint, rollback)
+│                        templates (bootstrap, day1, aaa)
+├── nr/                  Nornir: wait_ready.py · backup_and_audit.py · drift.py · tacacs_test.py · common.py (SoT inventory)
+├── validation/          validate.py · validate_bgp.py · failover.py (intent-derived checks, JUnit)
 ├── api/                 netconf_get.py · restconf_get.py · gnmi_check.sh
-├── scripts/             00-host-setup.sh · 01-build-images.sh · ci.sh · render_templates.py
-├── docs/                IMAGES.md · ARCHITECTURE.md · TROUBLESHOOTING.md · topologyimages/topology.png
-├── .github/             lint workflow · issue and pull request templates
+├── scripts/             host setup · image build · ci.sh · gen_topology · render_* · vault-init · pki · run_manifest
+│                        batfish_check · netbox_sync · tacacs-check
+├── docs/                PRODUCTION*.md · ARCHITECTURE.md · TROUBLESHOOTING.md · IMAGES.md · topologyimages/
+├── .github/             lint workflow · lab workflow (self-hosted runner) · issue and pull request templates
 ├── lab.env.example      optional local overrides (copy to lab.env)
 └── Makefile             entry point for every stage
 ```
@@ -229,11 +282,15 @@ All optional. Set them in `lab.env` or on the command line (`make ci GNMI_SKIP=n
 | Variable | Default | Purpose |
 |---|---|---|
 | `C8KV_IMAGE`, `XRV9K_IMAGE`, `N9KV_IMAGE` | tested versions above | Local image tags |
+| `C8KV_MEMORY`, `C8KV_SMP` | `4096`, `1` | C8000v sizing (17.16 nested: `8192`, `2`) |
 | `N9KV_MEMORY`, `N9KV_SMP` | `6144`, `2` | N9Kv sizing (full image: `10240`, `4`) |
 | `GNMI_SKIP` | `xe1 xr1` | Nodes excluded from the gNMI test; `none` tests all |
 | `TOPO` | `topology/lab.clab.yml` | Topology file |
 | `CHANGE` | `sot/changes/loopback100.yml` | Change set for `change` / `validate-change` |
 | `KEEP_LAB` | `0` | `1` keeps the lab after `ci.sh` |
+| `TACACS` | `0` | `1` adds the TACACS+ stages to `ci.sh` |
+| `FAILOVER` | `0` | `1` adds the failure test to `ci.sh` |
+| `ANSIBLE_VAULT_PASSWORD_FILE` | `~/.config/mvauto/vault-pass` | Vault password file (e.g. a CI secret) |
 | `KEEP_CHANGE` | unset | `1` makes `prune` / `prune-check` keep the loopbacks of `$(CHANGE)` |
 | `WAIT_TIMEOUT` | `1800` | Seconds `make wait` polls |
 
@@ -249,17 +306,17 @@ All optional. Set them in `lab.env` or on the command line (`make ci GNMI_SKIP=n
   retries, and a rerun normally passes.
 - **Prune scope:** `prune` only manages loopbacks. Other unmanaged config (interfaces, OSPF settings) is
   reported by `make drift`, not removed.
+- **TACACS+ on IOS XR:** off by default (`services.tacacs.apply_to`); check the task-group attributes
+  for your release first.
+- **TLS verification:** `make pki` creates certificates, but installing them is manual and
+  `pki.verify_with_lab_ca` is off until you do.
 
-## Going further: what production would add
+## Before real devices
 
-This lab keeps things simple on purpose. A production setup would typically add:
-
-- **Secrets management** — Ansible Vault or a secrets manager instead of plaintext lab credentials.
-- **Verified SSH host keys** and **TLS with real certificates** for NETCONF, RESTCONF and gNMI.
-- **Full desired state for everything** — `prune` covers loopbacks; production would extend this to all
-  managed resources (`state: replaced` / `overridden`), with guardrails for management interfaces.
-- **Scheduled drift alerts** — `make drift` from cron or a pipeline, with notifications instead of a log file.
-- **Change approval** — pull request reviews and a pipeline gate before anything reaches real devices.
+The workflow is production-style; some lab shortcuts are not. Unverified SSH host keys, a lab CA,
+the vault key in a home directory, shared privilege-15 automation accounts, a permit-all TACACS+
+group, additive configuration and all-at-once rollout must be replaced first. The full list, with
+what production needs instead: [docs/PRODUCTION.md](docs/PRODUCTION.md#gaps-before-real-devices).
 
 ## Topology diagram
 
@@ -272,6 +329,9 @@ TopoViewer and take a screenshot (see TROUBLESHOOTING for why SVG export may los
 
 - [docs/IMAGES.md](docs/IMAGES.md) — obtaining and building images, file naming rules
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — design decisions and trade-offs
+- [docs/PRODUCTION.md](docs/PRODUCTION.md) — approach to production: coverage, reference run, gaps before real devices
+- [docs/PRODUCTION-PHASE1.md](docs/PRODUCTION-PHASE1.md) — vault, single SoT, TACACS+, TLS, pre/post checks
+- [docs/PRODUCTION-PHASE2.md](docs/PRODUCTION-PHASE2.md) — rollback, failure tests, telemetry, Batfish, NetBox, self-hosted CI
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — every failure hit while building this lab, with fixes
 - [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [CHANGELOG.md](CHANGELOG.md)
 
