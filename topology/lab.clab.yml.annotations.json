@@ -8,7 +8,7 @@
         "y": -84.92753266571495
       },
       "fontSize": 24,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "backgroundColor": "transparent",
       "fontWeight": "bold",
       "fontStyle": "normal",
@@ -26,7 +26,7 @@
         "y": -35.2964412983305
       },
       "fontSize": 14,
-      "fontColor": "#e3e3e3",
+      "fontColor": "#000000",
       "backgroundColor": "transparent",
       "fontWeight": "bold",
       "fontStyle": "normal",
@@ -45,7 +45,7 @@
       },
       "fontSize": 12,
       "fontColor": "#1d4ed8",
-      "backgroundColor": "#19233e",
+      "backgroundColor": "#bfcbee",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -100,7 +100,7 @@
         "y": 265.41736242923116
       },
       "fontSize": 12,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -117,7 +117,7 @@
         "y": 261.07519803509473
       },
       "fontSize": 12,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -128,14 +128,14 @@
     },
     {
       "id": "legend",
-      "text": "OSPF area 0 (point-to-point) underlay\n iBGP AS 65000 full mesh between Loopback0 \nLoopback200 (10.255.x.x) is advertised only via BGP",
+      "text": "OSPF area 0 (point-to-point) underlay\n iBGP AS 65000 full mesh between Loopback0 \nLoopback200 (10.255.x.x) is advertised only via BGP\nTACACS+ AAA for xe1 and nx1 over the management network",
       "position": {
-        "x": 361.22393162393143,
+        "x": 336.22393162393143,
         "y": 583.5350427350427
       },
       "fontSize": 13,
-      "fontColor": "#4b5563",
-      "backgroundColor": "#a4a2a2",
+      "fontColor": "#050505",
+      "backgroundColor": "#dfd2d2",
       "fontWeight": "bold",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -152,7 +152,7 @@
         "y": 448.8515864340484
       },
       "fontSize": 12,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -167,7 +167,7 @@
         "y": 451.2889265577176
       },
       "fontSize": 12,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -184,7 +184,7 @@
         "y": 449.14278412955946
       },
       "fontSize": 12,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -195,11 +195,11 @@
       "id": "freeText_1791117761581",
       "text": ".2",
       "position": {
-        "x": 680.952967160405,
-        "y": 333.1479949953968
+        "x": 680.4126713734862,
+        "y": 329.8238175232455
       },
       "fontSize": 12,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -217,7 +217,7 @@
         "y": 192.5984865195901
       },
       "fontSize": 12,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -233,7 +233,7 @@
         "y": 199.7594677350722
       },
       "fontSize": 12,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
@@ -249,13 +249,29 @@
         "y": 335.30131542931883
       },
       "fontSize": 12,
-      "fontColor": "#ffffff",
+      "fontColor": "#000000",
       "fontWeight": "normal",
       "fontStyle": "normal",
       "textDecoration": "none",
       "textAlign": "center",
       "fontFamily": "monospace",
       "rotation": 306
+    },
+    {
+      "id": "freeText_1791453937233",
+      "text": "  TACACS+ server · tac_plus\n  mgmt 172.30.30.20 (management network only)",
+      "position": {
+        "x": 773.9821935308657,
+        "y": 76.04200609498457
+      },
+      "fontSize": 14,
+      "fontColor": "#0b1519",
+      "backgroundColor": "#d5ceaa",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "monospace"
     }
   ],
   "freeShapeAnnotations": [],
@@ -292,15 +308,17 @@
     {
       "id": "tacacs",
       "position": {
-        "x": 500,
-        "y": 320
-      }
+        "x": 720,
+        "y": 80
+      },
+      "icon": "server",
+      "iconCornerRadius": 0
     }
   ],
   "edgeAnnotations": [],
   "aliasEndpointAnnotations": [],
   "viewerSettings": {
-    "gridBgColor": "#434242",
+    "gridBgColor": "#ffffff",
     "gridColor": "#ffffff",
     "gridStyle": "dotted",
     "linkLabelMode": "show-all",
