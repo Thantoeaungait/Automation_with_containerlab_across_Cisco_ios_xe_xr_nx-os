@@ -15,6 +15,9 @@ topology:
         QEMU_SMP: ${C8KV_SMP:=1}
     cisco_xrv9k:
       image: ${XRV9K_IMAGE:=vrnetlab/cisco_xrv9k:24.3.1}
+      env:
+        QEMU_MEMORY: ${XRV9K_MEMORY:=10240}
+        QEMU_SMP: ${XRV9K_SMP:=2}
     cisco_n9kv:
       image: ${N9KV_IMAGE:=vrnetlab/cisco_n9kv:9500-lite-10.5.5.M}
       env:

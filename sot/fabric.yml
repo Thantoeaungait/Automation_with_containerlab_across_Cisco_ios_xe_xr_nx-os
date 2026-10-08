@@ -39,6 +39,9 @@ platforms:
   iosxr:
     clab_kind: cisco_xrv9k
     image: ${XRV9K_IMAGE:=vrnetlab/cisco_xrv9k:24.3.1}
+    clab_env:
+      QEMU_MEMORY: ${XRV9K_MEMORY:=10240}   # MB; tested at 10240 / 2 (vrnetlab default ~16 GB)
+      QEMU_SMP: ${XRV9K_SMP:=2}
     clab_if: { from: GigabitEthernet, to: Gi }        # GigabitEthernet0/0/0/0 -> Gi0/0/0/0
     container_if: { match: 'GigabitEthernet0/0/0/(\d+)$', offset: 1 }   # Gi0/0/0/0 -> eth1
     ansible_network_os: cisco.iosxr.iosxr
@@ -78,7 +81,14 @@ services:
     gnmic_ip: 172.30.30.21
     prometheus_ip: 172.30.30.22
     grafana_ip: 172.30.30.23
+    host_ports:               # published on the lab host, so a browser on ANOTHER machine can reach them
+      grafana: 3000           # http://<lab-host-ip>:3000
+      prometheus: 9090        # http://<lab-host-ip>:9090
+      gnmic: 9804             # http://<lab-host-ip>:9804/metrics
     gnmic_image: ghcr.io/openconfig/gnmic:latest
+    gnmic_env:                # newer Go TLS stacks drop RSA key exchange; some NX-OS gRPC servers need it
+      GODEBUG: tlsrsakex=1
+    gnmic_memory: 512MB       # cap: a failing subscription retry loop grew gnmic to >3 GB
     prometheus_image: prom/prometheus:latest
     grafana_image: grafana/grafana:latest
   netbox:                     # optional external NetBox kept in sync from this file (make netbox-sync)

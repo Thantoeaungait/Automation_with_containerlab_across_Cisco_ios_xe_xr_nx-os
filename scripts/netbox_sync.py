@@ -31,6 +31,19 @@ def get_or_create(endpoint, lookup: dict, extra: dict | None = None):
     return obj if obj else endpoint.create({**lookup, **(extra or {})})
 
 
+def connect(pynetbox, url: str, token: str):
+    """NetBox 4.5+ v2 tokens ("nbt_<key>.<secret>") need "Bearer"; v1 tokens use "Token".
+
+    pynetbox only adds its own "Token ..." header when token= is set, so v2 tokens go on the session.
+    """
+    token = token.strip().removeprefix("Bearer ").removeprefix("Token ").strip()   # pasted header value
+    if token.startswith("nbt_"):
+        nb = pynetbox.api(url)
+        nb.http_session.headers["Authorization"] = f"Bearer {token}"
+        return nb
+    return pynetbox.api(url, token=token)
+
+
 def main() -> int:
     try:
         import pynetbox
@@ -42,7 +55,7 @@ def main() -> int:
     token = os.environ.get("NETBOX_TOKEN") or sot.secrets().get("netbox", {}).get("token")
     if not token or token.startswith("CHANGE_ME"):
         sys.exit("NetBox API token missing: create one in NetBox, then make vault-edit (netbox.token)")
-    nb = pynetbox.api(url, token=token)
+    nb = connect(pynetbox, url, token)
 
     site = get_or_create(nb.dcim.sites, {"slug": slug(cfg["site"])}, {"name": cfg["site"], "status": "active"})
     cisco = get_or_create(nb.dcim.manufacturers, {"slug": "cisco"}, {"name": "Cisco"})

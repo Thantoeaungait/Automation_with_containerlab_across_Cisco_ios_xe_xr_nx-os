@@ -85,13 +85,26 @@ def render() -> str:
                   f"        - {tcfg}/gnmic.yaml:/app/gnmic.yaml:ro"]
         if (fab.get("pki") or {}).get("verify_with_lab_ca"):
             lines.append("        - ../secrets/pki/ca.crt:/app/ca.crt:ro")
-        lines += ["      cmd: --config /app/gnmic.yaml subscribe",
+        hp = tel.get("host_ports") or {}
+
+        def ports(name: str, inside: int) -> list[str]:
+            return ["      ports:", f"        - {hp[name]}:{inside}"] if hp.get(name) else []
+
+        genv = tel.get("gnmic_env") or {}
+        if genv:
+            lines += ["      env:", *[f"        {k}: {v}" for k, v in genv.items()]]
+        if tel.get("gnmic_memory"):
+            lines.append(f"      memory: {tel['gnmic_memory']}")
+        lines += ["      cmd: --config /app/gnmic.yaml subscribe", *ports("gnmic", 9804),
                   "    prometheus:", "      kind: linux", f"      image: {tel['prometheus_image']}",
                   f"      mgmt-ipv4: {tel['prometheus_ip']}", "      binds:",
-                  f"        - {tcfg}/prometheus.yml:/etc/prometheus/prometheus.yml:ro",
+                  f"        - {tcfg}/prometheus.yml:/etc/prometheus/prometheus.yml:ro", *ports("prometheus", 9090),
                   "    grafana:", "      kind: linux", f"      image: {tel['grafana_image']}",
                   f"      mgmt-ipv4: {tel['grafana_ip']}", "      binds:",
-                  f"        - {tcfg}/grafana-datasource.yaml:/etc/grafana/provisioning/datasources/mvauto.yaml:ro"]
+                  f"        - {tcfg}/grafana-datasource.yaml:/etc/grafana/provisioning/datasources/mvauto.yaml:ro",
+                  "        - grafana/dashboards-provider.yaml:/etc/grafana/provisioning/dashboards/mvauto.yaml:ro",
+                  "        - grafana/dashboards:/var/lib/grafana/dashboards:ro",
+                  *ports("grafana", 3000)]
     lines += ["", "  links:"]
     lines += [f'    - endpoints: ["{x}", "{y}"]' for x, y in links(fab)]
     return "\n".join(lines) + "\n"

@@ -313,6 +313,27 @@
       },
       "icon": "server",
       "iconCornerRadius": 0
+    },
+    {
+      "id": "grafana",
+      "position": {
+        "x": 200,
+        "y": 60
+      }
+    },
+    {
+      "id": "prometheus",
+      "position": {
+        "x": 200,
+        "y": 160
+      }
+    },
+    {
+      "id": "gnmic",
+      "position": {
+        "x": 200,
+        "y": 260
+      }
     }
   ],
   "edgeAnnotations": [],

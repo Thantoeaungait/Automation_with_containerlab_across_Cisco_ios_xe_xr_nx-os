@@ -109,9 +109,15 @@ Other versions will probably work; if your image tags differ, set them in `lab.e
 | | Minimum |
 |---|---|
 | vCPU | 8 (12 recommended) |
-| RAM | 32 GB — XRv9000 ~16 GB · C8000v ~5 GB · N9Kv-lite 6 GB + host |
-| Disk | 80 GB free |
+| RAM | 32 GB — XRv9000 10 GB · N9Kv-lite 6 GB · C8000v 4 GB · TACACS+ ~2 GB · telemetry ~0.5 GB + host |
+| Swap | 16 GB+ recommended as a safety net against OOM kills (not a substitute for RAM) |
+| Disk | 80 GB free (+ swap file) |
 | Virtualization | `/dev/kvm` (bare metal, or nested virtualization enabled) |
+
+The router VMs are sized in `sot/fabric.yml` (`platforms.*.clab_env`) and can be overridden in
+`lab.env`. XRv9000 runs at **10240 MB / 2 vCPU** by default (tested with the full pipeline); the
+vrnetlab default of ~16 GB is not needed for this lab. If the host runs out of memory, see
+[TROUBLESHOOTING → Host resources](docs/TROUBLESHOOTING.md#host-resources).
 
 Host software (installed by `scripts/00-host-setup.sh`): Docker, QEMU/KVM, containerlab, gnmic, uv, shellcheck.
 
@@ -308,6 +314,7 @@ All optional. Set them in `lab.env` or on the command line (`make ci GNMI_SKIP=n
 |---|---|---|
 | `C8KV_IMAGE`, `XRV9K_IMAGE`, `N9KV_IMAGE` | tested versions above | Local image tags |
 | `C8KV_MEMORY`, `C8KV_SMP` | `4096`, `1` | C8000v sizing (17.16 nested: `8192`, `2`) |
+| `XRV9K_MEMORY`, `XRV9K_SMP` | `10240`, `2` | XRv9000 sizing (raise to `12288`–`16384` if XR fails to boot) |
 | `N9KV_MEMORY`, `N9KV_SMP` | `6144`, `2` | N9Kv sizing (full image: `10240`, `4`) |
 | `GNMI_SKIP` | `xe1 xr1` | Nodes excluded from the gNMI test; `none` tests all |
 | `TOPO` | `topology/lab.clab.yml` | Topology file |

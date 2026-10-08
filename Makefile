@@ -10,7 +10,7 @@ PLAYBOOK     := $(VENV)/bin/ansible-playbook
 # Image tags / NX-OS sizing come from lab.env (shell exports override it)
 -include lab.env
 TOPO         ?= topology/lab.clab.yml
-LAB_VARS := C8KV_IMAGE C8KV_MEMORY C8KV_SMP N9KV_IMAGE N9KV_MEMORY N9KV_SMP XRV9K_IMAGE GNMI_SKIP
+LAB_VARS := C8KV_IMAGE C8KV_MEMORY C8KV_SMP N9KV_IMAGE N9KV_MEMORY N9KV_SMP XRV9K_IMAGE XRV9K_MEMORY XRV9K_SMP GNMI_SKIP
 export $(LAB_VARS)
 CLAB_ENV := $(foreach v,$(LAB_VARS),$(if $($(v)),$(v)=$($(v))))
 # clab_admins members run containerlab directly; otherwise pass vars via `sudo env`
@@ -24,7 +24,7 @@ export ANSIBLE_CONFIG := $(CURDIR)/ansible.cfg
 export PATH := $(CURDIR)/$(VENV)/bin:$(PATH)
 
 .DEFAULT_GOAL := help
-.PHONY: help deps deps-optional env lint render tacacs-check checkpoint rollback safe-change failover-test telemetry-config batfish netbox-sync vault-init vault-edit vault-view vault-encrypt topology topology-check tacacs-config tacacs tacacs-test pki testbed pre-check post-check state-diff validate-bgp prune-check prune golden drift drift-check deploy wait bootstrap configure dry-run validate change validate-change \
+.PHONY: help deps deps-optional env lint render tacacs-check checkpoint rollback safe-change failover-test telemetry-config telemetry-status batfish netbox-sync vault-init vault-edit vault-view vault-encrypt topology topology-check tacacs-config tacacs tacacs-test pki testbed pre-check post-check state-diff validate-bgp prune-check prune golden drift drift-check deploy wait bootstrap configure dry-run validate change validate-change \
 	    audit netconf restconf gnmi apis inspect graph ssh-xe ssh-xr ssh-nx destroy ci clean
 
 help: ## List targets
@@ -162,6 +162,9 @@ safe-change: ## checkpoint -> apply $(CHANGE) -> validate; roll back automatical
 
 failover-test: ## Break the SoT failover link, check reroute and recovery
 	$(PY) validation/failover.py
+
+telemetry-status: ## Diagnose the telemetry stack (containers, URLs, samples)
+	./scripts/telemetry-status.sh
 
 telemetry-config: ## Render gnmic/Prometheus/Grafana configs (when services.telemetry.enabled)
 	$(PY) scripts/render_telemetry.py
