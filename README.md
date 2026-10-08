@@ -77,6 +77,31 @@ audit → APIs → failure test → destroy** — runs with one command and leav
 | TACACS+ server | Marc Huber's tac_plus — `lfkeitel/tacacs_plus:latest` |
 | Python (venv) | 3.12 via uv |
 
+### Community-tested
+
+Reproduced independently by **Jeleel Muibi** on a fresh Proxmox VM (Ubuntu 24.04, 12 vCPU, 40 GiB RAM,
+80 GiB disk), commit `a4cda79` — see
+[Discussion #7](https://github.com/Thantoeaungait/Automation_with_containerlab_across_Cisco_ios_xe_xr_nx-os/discussions/7):
+
+| Component | Version |
+|---|---|
+| containerlab | 0.79.0 |
+| Catalyst 8000v (IOS XE) | 17.16.01a (needed `C8KV_MEMORY=8192`, `C8KV_SMP=2` under nested virtualization) |
+| XRv9000 (IOS XR) | 24.3.1 |
+| Nexus 9500v (NX-OS) | 10.4.2.F |
+
+| Stage | Result |
+|---|---|
+| Baseline validation | 12/12 |
+| iBGP validation | 9/9 |
+| Change validation (Loopback100) | 18/18 |
+| Prune and back to baseline | 12/12 |
+| SoT drift | No drift |
+| NETCONF / RESTCONF / gNMI | All three platforms / IOS XE + NX-OS / NX-OS |
+
+Issues found during reproduction (NX-OS RESTCONF XML response, XRv9000 image-size warning,
+C8000v 17.16 sizing) are fixed and credited in the [CHANGELOG](CHANGELOG.md).
+
 Other versions will probably work; if your image tags differ, set them in `lab.env` (see below).
 
 ## Requirements
