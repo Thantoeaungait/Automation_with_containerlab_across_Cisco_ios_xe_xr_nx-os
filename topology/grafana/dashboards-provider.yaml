@@ -1,0 +1,11 @@
+# Grafana dashboard provisioning: loads every JSON in /var/lib/grafana/dashboards (bind-mounted
+# from topology/grafana/dashboards/) into the "mvauto" folder. Edits in the UI are allowed but are
+# lost on redeploy - export the JSON back into the repo to keep them.
+apiVersion: 1
+providers:
+  - name: mvauto
+    folder: mvauto
+    type: file
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

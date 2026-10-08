@@ -89,6 +89,7 @@ of this at a real network:
 | Source of truth | YAML in Git; NetBox gets a copy | One authoritative SoT (often NetBox) with change review |
 | Rollout | All devices at once | Canary device, batches, maintenance windows, stop-on-failure |
 | Detection | OSPF dead interval (~40 s) | BFD, syslog collection, alerting on telemetry |
+| Capacity | One host, VMs sized down (XRv9000 10 GB), swap as safety net | Capacity planning per node, resource limits and monitoring on the automation hosts |
 | Pipeline | Manual trigger on one lab host | Pre-merge lab tests on every change, promotion to production with approval |
 
 ## Lessons from building it

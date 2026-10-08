@@ -81,15 +81,38 @@ make topology            # adds gnmic, prometheus and grafana containers
 make deploy wait bootstrap configure
 ```
 
-| Service | Address | Notes |
-|---|---|---|
-| gnmic | 172.30.30.21:9804 | Subscribes to `services.telemetry.targets` (nx1), exposes Prometheus metrics |
-| Prometheus | http://172.30.30.22:9090 | Scrapes gnmic |
-| Grafana | http://172.30.30.23:3000 | `admin` / `admin` on first login; Prometheus is pre-configured |
+| Service | From the lab host | From another machine | Notes |
+|---|---|---|---|
+| gnmic | http://172.30.30.21:9804/metrics | http://&lt;lab-host-ip&gt;:9804/metrics | Subscribes to `services.telemetry.targets` (nx1) |
+| Prometheus | http://172.30.30.22:9090 | http://&lt;lab-host-ip&gt;:9090 | Scrapes gnmic |
+| Grafana | http://172.30.30.23:3000 | http://&lt;lab-host-ip&gt;:3000 | `admin` / `admin` on first login; Prometheus pre-configured |
 
-In Prometheus, search for metrics starting with `nxos_` to see what arrives. NX-OS uses native
+The 172.30.30.x addresses live on a Docker bridge inside the lab host, so a browser on your laptop
+(or Windows/WSL) cannot reach them. The containers therefore also publish their ports on the lab
+host (`services.telemetry.host_ports`); use the lab host's IP (`hostname -I`). If the host has a
+firewall: `sudo ufw allow 3000,9090/tcp`. Check everything with `make telemetry-status`.
+
+**If no samples arrive** (`make telemetry-status` shows `0 sample lines` and the gnmic log shows
+`authentication handshake failed: EOF` for nx1): the TLS handshake to NX-OS fails. The generated
+gnmic container sets `GODEBUG: tlsrsakex=1` to re-enable the RSA key-exchange ciphers that newer
+gnmic builds drop and some NX-OS gRPC servers still need (`services.telemetry.gnmic_env`). Its
+memory is capped at 512 MB (`gnmic_memory`), because a failing retry loop otherwise keeps growing.
+If gnmic **restarts every `sample_interval` with exit 0** and no error, the subscribed NX-OS path is
+too broad: the defaults subscribe only to the interface counters (`dbgIfIn-items`, `dbgIfOut-items`)
+and CPU summary, not the whole `phys-items` subtree.
+
+**Dashboard:** Grafana loads `topology/grafana/dashboards/nx1-telemetry.json` at deploy time
+(folder *mvauto*): inbound/outbound bit/s, unicast packets/s, errors + discards, CPU summary.
+On a Grafana that was deployed before this file existed, import it once: Dashboards → New → Import →
+upload the JSON. To keep UI changes, export the JSON (Share → Export) back into that folder.
+
+In Prometheus, metrics are named after the gNMI origin and path, so NX-OS metrics start with
+`device_System_` (query `{__name__=~"device_System_.*"}` or type `device_` for autocomplete). On this N9Kv image the DME counters arrive multiplied by 2^32
+(32-bit halves swapped; checked against `show interface`), so divide by 4294967296. Examples:
+`sum by (id) (rate(device_System_intf_items_phys_items_PhysIf_list_0_dbgIfIn_items_octets{id!=""}[2m])) / 4294967296 * 8`
+(inbound bit/s per interface) and `device_System_procsys_items_syscpusummary_items_idle` (CPU idle %). NX-OS uses native
 (DME) paths because this image has no OpenConfig bundle; change them in `PATHS` in
-`scripts/render_telemetry.py`. About 0.5 GB RAM in total.
+`scripts/render_telemetry.py`. About 0.5 GB RAM in total (gnmic capped at 512 MB).
 
 Exercise: build a Grafana panel for interface counters, then run `make failover-test` and watch
 the traffic move.

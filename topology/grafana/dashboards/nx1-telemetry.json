@@ -1,0 +1,332 @@
+{
+  "uid": "mvauto-nx1",
+  "title": "mvauto \u00b7 NX-OS telemetry (nx1)",
+  "tags": [
+    "mvauto",
+    "gnmi",
+    "nxos"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 4,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "nx1 inbound traffic",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS}"
+          },
+          "expr": "sum by (id) (rate(device_System_intf_items_phys_items_PhysIf_list_0_dbgIfIn_items_octets{id!=\"\"}[2m])) / 4294967296 * 8",
+          "legendFormat": "{{id}}"
+        }
+      ],
+      "maxDataPoints": 300,
+      "description": "N9Kv DME counters arrive multiplied by 2^32 (32-bit halves swapped); queries divide by 4294967296."
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "nx1 outbound traffic",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS}"
+          },
+          "expr": "sum by (id) (rate(device_System_intf_items_phys_items_PhysIf_list_0_dbgIfOut_items_octets{id!=\"\"}[2m])) / 4294967296 * 8",
+          "legendFormat": "{{id}}"
+        }
+      ],
+      "maxDataPoints": 300,
+      "description": "N9Kv DME counters arrive multiplied by 2^32 (32-bit halves swapped); queries divide by 4294967296."
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "nx1 packets/s (unicast in / out)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS}"
+          },
+          "expr": "sum by (id) (rate(device_System_intf_items_phys_items_PhysIf_list_0_dbgIfIn_items_ucastPkts{id!=\"\"}[2m])) / 4294967296",
+          "legendFormat": "in {{id}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS}"
+          },
+          "expr": "sum by (id) (rate(device_System_intf_items_phys_items_PhysIf_list_0_dbgIfOut_items_ucastPkts{id!=\"\"}[2m])) / 4294967296",
+          "legendFormat": "out {{id}}"
+        }
+      ],
+      "maxDataPoints": 300,
+      "description": "N9Kv DME counters arrive multiplied by 2^32 (32-bit halves swapped); queries divide by 4294967296."
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "nx1 errors + discards /s",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS}"
+          },
+          "expr": "sum by (id) (rate(device_System_intf_items_phys_items_PhysIf_list_0_dbgIfIn_items_errors{id!=\"\"}[5m]) + rate(device_System_intf_items_phys_items_PhysIf_list_0_dbgIfIn_items_discards{id!=\"\"}[5m])) / 4294967296",
+          "legendFormat": "in {{id}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS}"
+          },
+          "expr": "sum by (id) (rate(device_System_intf_items_phys_items_PhysIf_list_0_dbgIfOut_items_errors{id!=\"\"}[5m]) + rate(device_System_intf_items_phys_items_PhysIf_list_0_dbgIfOut_items_discards{id!=\"\"}[5m])) / 4294967296",
+          "legendFormat": "out {{id}}"
+        }
+      ],
+      "maxDataPoints": 300,
+      "description": "N9Kv DME counters arrive multiplied by 2^32 (32-bit halves swapped); queries divide by 4294967296."
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "nx1 CPU summary",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 1
+          },
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS}"
+          },
+          "expr": "avg(device_System_procsys_items_syscpusummary_items_user)",
+          "legendFormat": "user"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS}"
+          },
+          "expr": "avg(device_System_procsys_items_syscpusummary_items_kernel)",
+          "legendFormat": "kernel"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS}"
+          },
+          "expr": "avg(device_System_procsys_items_syscpusummary_items_idle)",
+          "legendFormat": "idle"
+        }
+      ],
+      "maxDataPoints": 300
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "DS",
+        "label": "Data source",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "refresh": 1
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  }
+}

@@ -5,7 +5,43 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-08
+
+Streaming telemetry works end to end (NX-OS gNMI -> gnmic -> Prometheus -> Grafana dashboard, values
+checked against `show interface`), NetBox sync works with NetBox 4.5+ tokens, and the lab fits a 32 GB host.
+
+### Fixed
+- gnmic restarted every 30 s with no samples: NX-OS ended the stream when subscribed to the whole
+  `phys-items` subtree. NX-OS telemetry now subscribes to the narrow `dbgIfIn-items` / `dbgIfOut-items`
+  counters and `syscpusummary-items` (verified: no restarts, ~2000 metric lines).
+- NX-OS interface telemetry is subscribed per SoT interface (`PhysIf-list[id=eth1/1]`); the unkeyed list
+  arrived as one JSON blob, so the dashboard showed a single 0 series for an unused port.
+- NX-OS interface rates were ~4.3 billion times too high: N9Kv DME counters arrive as real x 2^32
+  (verified against `show interface`); dashboard queries divide by 4294967296.
+- Grafana dashboard: exact metric names + `sum by (id)` (no regex over ~2000 flattened series: the
+  browser tab froze), CPU as user/kernel/idle averages; gnmic `export-timestamps: false` (rate spikes).
+- Docs pointed to `nxos_*` Prometheus metrics; the real names start with `device_System_` (gNMI origin + path).
+- `make netbox-sync` accepts NetBox 4.5+ v2 API tokens (`nbt_<key>.<secret>`, sent as `Bearer`)
+- Telemetry UIs were reachable only from the lab host (Docker bridge addresses). Grafana, Prometheus
+  and gnmic now also publish their ports on the host (`services.telemetry.host_ports`), so a browser
+  on another machine can use `http://<lab-host-ip>:3000` / `:9090`.
+
+### Changed
+- XRv9000 runs at 10240 MB / 2 vCPU by default (`platforms.iosxr.clab_env`), overridable with
+  `XRV9K_MEMORY` / `XRV9K_SMP` in `lab.env`. The vrnetlab default (~16 GB) caused OOM kills on a
+  32 GB host once TACACS+ and telemetry were added; the full pipeline passes at 10 GB.
+- gnmic container: `GODEBUG: tlsrsakex=1` (`services.telemetry.gnmic_env`) for NX-OS gRPC servers that
+  need RSA key exchange, and a 512 MB memory cap (`gnmic_memory`).
+
+### Added
+- Grafana dashboard `topology/grafana/dashboards/nx1-telemetry.json`, provisioned automatically
+  (traffic bit/s, packets/s, errors + discards, CPU); the Prometheus data source now has the fixed uid `prometheus`.
+- `make telemetry-status`: containers, endpoint checks (bridge IP and host port) and sample count.
+
 ### Documentation
+- README requirements updated (per-node RAM, swap); TROUBLESHOOTING "Host resources" section
+  (OOM kills, reading `free`, swap file, VM sizing) and gnmic TLS handshake / memory rows.
+- PRODUCTION.md: capacity gap; PRODUCTION-PHASE2.md: telemetry troubleshooting.
 - README: community-tested section restored and updated with the full-pipeline reproduction by
   Jeleel Muibi (commit `a4cda79`: C8000v 17.16.01a, XRv9000 24.3.1, N9Kv 9500 10.4.2.F; Discussion #7).
 

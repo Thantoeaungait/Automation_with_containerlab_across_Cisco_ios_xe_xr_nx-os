@@ -47,6 +47,26 @@ Search this page for the exact error text you see.
 | `sudo: preserving the entire environment is not supported, '-E' is ignored` | Ubuntu 26.04 uses sudo-rs | The Makefile uses `sudo env ...`; best: `sudo usermod -aG clab_admins $USER` and log in again |
 | `ERRO container "clab-mvauto-xe1" exited; container output: ...` during deploy | `--reconfigure` destroys the previous lab; that old container had already stopped | Harmless if the new deploy continues. If nodes keep exiting: `docker ps -a` (`Exited (137)` = killed) and `sudo dmesg \| grep -i oom` — usually not enough RAM |
 
+## Host resources
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Containers exit, `docker ps -a` shows `Exited (137)`, `dmesg` shows `Out of memory: Killed process ... qemu` | Host out of RAM: the kernel killed a router VM | Check `free -h` (look at **available**, not free) and `docker stats --no-stream`; reduce VM sizes and add swap (below) |
+| `free` shows 0 GB free | Normal: Linux uses spare RAM as cache | Only `available` matters; act if it is below ~1 GB |
+| XRv9000 takes most of the RAM | vrnetlab default is ~16 GB | Default is now 10240 MB / 2 vCPU (`platforms.iosxr.clab_env`); raise with `XRV9K_MEMORY` in `lab.env` if XR fails to boot |
+| Lab only fits with swap, then validation times out | VM memory swapped to disk: routers slow down, OSPF/BGP hellos are late | Swap is a safety net, not capacity. Stop unused containers (Batfish, NetBox), close the desktop browser, or deploy fewer nodes |
+
+Add a swap file (16 GB, on SSD):
+
+```bash
+sudo fallocate -l 16G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-swappiness.conf && sudo sysctl --system >/dev/null
+```
+
+`vm.swappiness=10` keeps the VMs in RAM until memory is really short.
+
 ## C8000v sizing
 
 | Symptom | Cause | Fix |
@@ -175,9 +195,20 @@ If you get gNMI working on XRv9000 under vrnetlab, a pull request is very welcom
 | `rollback configuration to` not found on XR | No checkpoint file | Run `make checkpoint` first (`reports/checkpoint/xr1.commit`) |
 | `netem failed` | Not in `clab_admins` and no passwordless sudo | `sudo usermod -aG clab_admins $USER`, log in again |
 | Failover detects nothing | Wrong container interface | Check `platforms.*.container_if` against `docker exec clab-mvauto-xe1 ip link` |
-| No `nxos_*` metrics in Prometheus | gnmic can't subscribe | `docker logs clab-mvauto-gnmic`; the native paths may differ on your NX-OS release |
+| Grafana / Prometheus not reachable from a browser | Browser runs on another machine; 172.30.30.x is only reachable from the lab host | Use `http://<lab-host-ip>:3000` / `:9090` (published via `host_ports`); `make telemetry-status` |
+| Telemetry containers missing | `services.telemetry.enabled` is false or `make topology` not re-run | Set it true, `make topology`, redeploy |
+| `make telemetry-status`: 0 samples; gnmic log `transport: authentication handshake failed: EOF` for nx1 | TLS handshake to the NX-OS gRPC server fails. Likely cause: recent gnmic builds (newer Go) no longer offer RSA key-exchange cipher suites, which some NX-OS gRPC servers require | The generated gnmic node sets `GODEBUG: tlsrsakex=1` (`services.telemetry.gnmic_env`). Verify: `gnmic -a 172.30.30.13:57400 -u admin -p admin --skip-verify capabilities` from the host; if the host works and the container does not, compare `gnmic version` and the container's `docker logs` |
+| gnmic restarts every `sample_interval` (~30 s), `exit=0`, `OOMKilled=false`, no error in the log, 0 samples | NX-OS ends the stream at the first sample when the subscription covers the whole `/System/intf-items/phys-items` subtree | Subscribe to narrow paths (`.../PhysIf-list/dbgIfIn-items`, `dbgIfOut-items`, `syscpusummary-items`, the default in `scripts/render_telemetry.py`), then `python3 scripts/render_telemetry.py && docker restart clab-mvauto-gnmic`. Check: `docker inspect -f '{{.RestartCount}} {{.State.StartedAt}}' clab-mvauto-gnmic` stays the same after 2 minutes |
+| gnmic container uses several GB of RAM | Retry loop on a failing subscription | Capped at `services.telemetry.gnmic_memory` (512MB); fix the subscription error above |
+| Grafana shows one flat 0 series whose labels list every NX-OS interface (`PhysIf_list_0_id="eth1/27", PhysIf_list_10_id=...`) | Unkeyed `PhysIf-list` path: NX-OS returns the whole list as one JSON blob and gnmic flattens it by index, so `PhysIf_list_0_*` is just the first (unused) port | Subscribe per interface with a keyed path, `PhysIf-list[id=eth1/1]/dbgIfIn-items` (generated from the SoT interfaces by `scripts/render_telemetry.py`) |
+| Telemetry counters ~4.3 billion times the CLI value (`show interface` 18,476,574 bytes, gNMI `dbgIfIn-items/octets` 7.9355e16) | N9Kv DME uint64 counters arrive with their 32-bit halves swapped: value = real x 2^32 (measured: 1 unicast packet = +4294967296) | Divide by `4294967296` in PromQL (the shipped dashboard does). The counter will glitch once when the real value passes 2^32 (4 GB). Compare with the CLI before trusting a new path |
+| Dashboard shows hundreds of Gb/s for a ping, zig-zag graph | `rate()` saw the counter go down and up (treated as resets) - device timestamps exported to Prometheus, and/or several series with the same labels | gnmic `export-timestamps: false` (default now); dashboard queries use `sum by (id) (rate(...{id!=""}))` |
+| Grafana tab "Page Unresponsive" | Panels pulled thousands of flattened series with very long label sets | Use the shipped dashboard (exact metric names, `sum by (id)`, `maxDataPoints` 300); close old dashboard tabs |
+| Prometheus query `nxos` returns nothing, target is UP | Metric names come from the gNMI origin and path, not the subscription name: NX-OS metrics start with `device_System_` | Query `{__name__=~"device_System_.*"}`, or type `device_` and use autocomplete |
+| No `device_System_*` metrics in Prometheus | gnmic can't subscribe | `docker logs clab-mvauto-gnmic`; the native paths may differ on your NX-OS release |
 | Batfish container exits or is slow | Not enough RAM | Run it with the lab destroyed; `docker logs batfish` |
 | `netbox-sync`: 403 / token missing | Token not set or wrong | `make vault-edit` → `netbox.token` |
+| `netbox-sync`: 403 `Invalid authorization header: Must be in the form "Bearer <key>.<token>"` | NetBox 4.5+ v2 token (`nbt_<key>.<secret>`) sent as `Token ...` | Store the **full** token `nbt_<key>.<secret>` in `netbox.token`; `netbox_sync.py` sends `Bearer` for `nbt_` tokens |
 
 ## Lint (`make lint`)
 

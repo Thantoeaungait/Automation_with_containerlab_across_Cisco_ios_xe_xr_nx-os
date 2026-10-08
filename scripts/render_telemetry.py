@@ -18,11 +18,28 @@ from lab import sot  # noqa: E402
 OUT = ROOT / "topology" / "configs" / "telemetry"
 
 # Native NX-OS (DME) paths: this lab's NX-OS image has no OpenConfig bundle.
+# - Keep them narrow: the whole /System/intf-items/phys-items subtree makes NX-OS end the stream at the
+#   first sample (gnmic exits 0 every sample_interval, no samples).
+# - Key the interface list: with JSON encoding an unkeyed PhysIf-list arrives as ONE blob, gnmic flattens
+#   it to PhysIf_list_0_..., PhysIf_list_1_... and every interface id becomes a label of a single series.
+#   One keyed path per SoT interface gives one series per interface (see nxos_paths()).
+NXOS_IF_LEAVES = ["dbgIfIn-items", "dbgIfOut-items"]
 PATHS = {
-    "nxos": ["/System/intf-items/phys-items", "/System/procsys-items/syscpusummary-items"],
+    "nxos": ["/System/procsys-items/syscpusummary-items"],
     "iosxe": ["/interfaces/interface/state/counters"],
     "iosxr": ["/interfaces/interface/state/counters"],
 }
+
+
+def nxos_paths(dev: dict) -> list[str]:
+    """Per-interface keyed DME paths for the device's SoT interfaces (Ethernet1/1 -> PhysIf-list[id=eth1/1])."""
+    paths = []
+    for itf in dev.get("interfaces", []):
+        name = itf["name"]
+        if name.lower().startswith("ethernet"):
+            key = "eth" + name[len("ethernet"):]
+            paths += [f"/System/intf-items/phys-items/PhysIf-list[id={key}]/{leaf}" for leaf in NXOS_IF_LEAVES]
+    return paths
 
 
 def main() -> int:
@@ -31,6 +48,7 @@ def main() -> int:
         print("telemetry disabled (services.telemetry.enabled: false) - nothing to render")
         return 0
     devs = sot.devices()
+    fab_devs = sot.fabric()["devices"]
     targets, subs = {}, {}
     for name in tel["targets"]:
         d = devs[name]
@@ -45,15 +63,20 @@ def main() -> int:
         else:
             t["skip-verify"] = True
         targets[f"{d['mgmt_ip']}:57400"] = t
-        subs[d["platform"]] = {"paths": PATHS[d["platform"]], "mode": "stream",
+        paths = list(subs.get(d["platform"], {}).get("paths", PATHS[d["platform"]]))
+        if d["platform"] == "nxos":
+            paths += [x for x in nxos_paths(fab_devs[name]) if x not in paths]
+        subs[d["platform"]] = {"paths": paths, "mode": "stream",
                                "stream-mode": "sample", "sample-interval": tel["sample_interval"]}
+    # export-timestamps off: Prometheus stamps samples at scrape time. Device timestamps gave rate() spikes
+    # of hundreds of Gb/s for a few-Mb/s ping on NX-OS.
     gnmic = {"log": True, "targets": targets, "subscriptions": subs,
              "outputs": {"prom": {"type": "prometheus", "listen": ":9804",
-                                  "strings-as-labels": True, "export-timestamps": True}}}
+                                  "strings-as-labels": True, "export-timestamps": False}}}
     prom = {"global": {"scrape_interval": "15s"},
             "scrape_configs": [{"job_name": "gnmic",
                                 "static_configs": [{"targets": [f"{tel['gnmic_ip']}:9804"]}]}]}
-    graf = {"apiVersion": 1, "datasources": [{"name": "Prometheus", "type": "prometheus", "access": "proxy",
+    graf = {"apiVersion": 1, "datasources": [{"name": "Prometheus", "uid": "prometheus", "type": "prometheus", "access": "proxy",
                                               "url": f"http://{tel['prometheus_ip']}:9090", "isDefault": True}]}
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "gnmic.yaml").write_text(yaml.safe_dump(gnmic, sort_keys=False))
