@@ -5,6 +5,11 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-08
+
+Streaming telemetry works end to end (NX-OS gNMI -> gnmic -> Prometheus -> Grafana dashboard, values
+checked against `show interface`), NetBox sync works with NetBox 4.5+ tokens, and the lab fits a 32 GB host.
+
 ### Fixed
 - gnmic restarted every 30 s with no samples: NX-OS ended the stream when subscribed to the whole
   `phys-items` subtree. NX-OS telemetry now subscribes to the narrow `dbgIfIn-items` / `dbgIfOut-items`
