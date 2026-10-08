@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Documentation
+- README: community-tested section restored and updated with the full-pipeline reproduction by
+  Jeleel Muibi (commit `a4cda79`: C8000v 17.16.01a, XRv9000 24.3.1, N9Kv 9500 10.4.2.F; Discussion #7).
+
 ## [2.0.0] - 2026-10-07
 
 Production release: the lab is rebuilt around production automation practices (vault, single
