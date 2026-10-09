@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Diagnose the telemetry stack: containers, endpoints, and whether metrics arrive.   (make telemetry-status)
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 LAB=$(sed -n 's/^  name: *//p' sot/fabric.yml | head -n1)
 if ! grep -q '^    enabled: true' <(sed -n '/^  telemetry:/,/^  [a-z]/p' sot/fabric.yml); then
   echo "!!! services.telemetry.enabled is false in sot/fabric.yml -> set true, then: make topology && make deploy"
