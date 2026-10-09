@@ -1,0 +1,5 @@
+   # Keep LF everywhere: scripts, YAML and templates run on Linux even when edited on Windows
+   * text=auto eol=lf
+   *.png binary
+   *.jpg binary
+   *.svg text eol=lf
